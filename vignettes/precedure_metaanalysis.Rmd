@@ -1,0 +1,258 @@
+---
+title: "Procedure to do a meta analysis"
+author: "Gerard H Ros"
+date: "2023-08-22"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# load packages
+require(data.table);require(metafor);require(readxl)
+
+```
+
+## The aim of a meta-analysis
+
+First, a meta-analysis is always focussing on analysing the impact of treatment X on variable Y. So, it answers the question: how is variable Y changing due to the application of treatment X. The calculated change is also called “an effect  size”. This change can be expressed as relative or absolute change. Example:
+
+*	The log response ratio: the logarithm of the mean of the treatment divided by mean of control
+*	The hedges d: the absolute difference between the mean of the treatment and the control.
+
+In addition, like all other regression models, you can estimate the impact of co-variables, being site properties or any other property that might affect the change of a treatment.
+
+See these tutorials:
+
+*	https://www.r-bloggers.com/2021/08/meta-analysis-in-r/
+*	https://bookdown.org/MathiasHarrer/Doing_Meta_Analysis_in_R/
+*	https://link.springer.com/article/10.1007/s11301-021-00247-4
+*	https://www.tqmp.org/RegularArticles/vol11-1/p037/p037.pdf
+*	https://www.metafor-project.org/doku.php/metafor
+*	https://link.springer.com/book/10.1007/978-3-319-21416-0
+
+In summary, a meta-analysis follows the next 8 steps:
+
+1. Define the question you like to answer
+2. Define the study selection criteria
+3. Collect data from literature, and extend with open data if needed
+4. Select and compute an effect size
+5. Aggregate effect sizes per main factor
+6. Do a meta-regression to quantify the impact of main factors and their interactions
+7. Visualise impact of main factors and interactions
+8. Apply the regression model on a new dataset (optional)
+
+## Step 1. Define the question
+
+In NutriBudget we’d like to know what the impact is of mitigation measures on a series of indicators. Indicators have been categorized as follows: pressure indicators, effect indicators and performance indicators. 
+
+After finalizing the project we have a quantitative relationship between measures and impact via models of WP2, supported by meta-analytical regression models from WP1. The regression models of WP1 will support the calibration and validation of the roadmaps tested and evaluated in WP2. For items that can not be modelled with WP2, these regression models can also be applied. For now, all the 9 KPI indicators can be (and likely will be) simulated with NutriEurope and NutriFarm. 
+For WP1 we focus first on the impact of measures on main KPIs. To start with, I would recommend to focus on 
+
+1. Crop yield (and associated nutrient uptake, field level)
+2. Nutrient surplus (both on field and farm level) for all nutrients
+3. Nutrient Use Efficiency (both on field and farm level)
+4. Soil properties pH and SOC (field level)
+
+Clearly define for each KPI the control and treated situation.
+
+## Step 2. Define selection criteria
+
+Based on the objectives of Nutribudget we can apply filters on the searched papers. All papers are shortly screened and included or excluded using a series of criteria. These (might) include:
+
+*	Statistical data: mean and standard deviations are perquisite, number of replicates should preferably known.
+*	Spatial coverage: focus on Europe or comparable climate zones
+*	Type and duration: we include only field experiments for a given duration
+*	Experimental data: basic site properties should be known.
+
+## Step 3. Data collection
+
+To assess the impact of a measure, we need first to know:
+
+*	The mean, standard deviation and number of replicates for a treatment (a measure being applied) and a control (no measure applied)
+*	Additional site properties affecting the impact of a measure. This includes: farming system, soil properties, climatic conditions, land use, housing system (see the note on KPI and data).
+*	Collect latitude and longitude of the experiment (to estimate missing data if needed).
+
+Note that missing data can be retrieved from other sources. For example, in most studies the crop yield is known. Even when no nutrient uptake is measures, you can multiply the yield with a given crop composition and as such determine the nutrient uptake. The nutrient fertilization is usually known, so you can estimate the nutrient surplus in these cases. See the script `covariate extraction` in scripts
+
+Note: the data structure usually needed is a row-based csv or excel file where each row represents an unique case with a mean, SD and n for both control and treatment as well all kind of site properties being a column in the table. The relevant items have been included in the measurement catalogue (where you only collect site properties from which you know they have an impact on the studies impact vs. measure combination).
+
+Always check your data before starting a meta-analysis. These include:
+
+* Check whether the variables are normally distributed, and if not, apply a transformation algorithm like a log function. 
+* Check also the number of categories in a categorial variable. If the distribution of samples over the categories is really skewed, update the categories. 
+* If you expect non-linear patterns between response variable and the independent variables, then add them as new variables.
+
+When data in the publications are not given as SD but as t-test values, r-values, ANOVA, then it is possible to estimate the uncertainty from these values.
+See: https://bookdown.org/MathiasHarrer/Doing_Meta_Analysis_in_R/es-calc.html
+
+When data on SD are finally missing, then you can still use the data. In that case you can estimate it from the mean coefficient of variation retreived from other studies. See illustrated below for an example dataset from Luncheng Yu (available in `data`).
+
+```{r step 3 example}
+
+  # require packages (is already done, but not visible in html)
+  # require(data.table); require(readxl)
+
+  # read data from Excel and convert into a data.table (note that R markdown sets the working directory in the location of the file)
+  d1 <- readxl::read_xlsx('../data/luncheng_2023_nue.xlsx',sheet = "Tables")
+  d1 <- as.data.table(d1)
+
+  # when data on variance (SD) is missing for the NUE of the control and treated plot, estimate this from the CV of the other studies
+  d1[, nuet_cv := mean(nuet_sd/nuet_mean,na.rm=T) * 1.25]
+  d1[, nuec_cv := mean(nuec_sd/nuec_mean,na.rm=T) * 1.25]
+  d1[is.na(nuet_sd), nuet_sd := nuet_mean * nuet_cv]
+  d1[is.na(nuec_sd), nuec_sd := nuec_mean * nuec_cv]
+
+  # update the missing values for n_dose (replace by median N dose when missing)
+  d1[is.na(n_dose), n_dose := median(d1$n_dose,na.rm=TRUE)]
+
+  # NUE might follow a non-linear pattern, so add a variable N dose ^2
+  d1[,n_dose2 := n_dose^2]
+  
+  # one might do a check to ensure normality of the variable, look to a histogram per variable, and if skewed, apply a log-transformation  
+  d1[, clay := log(clay)]
+  
+  # # scale the variables to unit variance
+  d1[,clay_scaled := scale(clay)]
+  d1[,soc_scaled := scale(soc)]
+  d1[,ph_scaled := scale(ph)]
+  d1[,mat_scaled := scale(mat)]
+  d1[,map_scaled := scale(map)]
+  d1[,n_dose_scaled := scale(n_dose)]
+  
+```
+
+
+## Step 4. Select and compute an effect size
+The most common effect sizes are the log transformed response ratio, the mean difference and the standardized mean difference. The first one is the most simple one (since a relative change has no units) but also difficult to interpret spatially given the current and desired status. Preferably we use the standardized mean difference. 
+This can easily be calculated via meta-analysis toolboxes like MetaWin or Metafor. I usually use the latter. It requires as input the mean, standard deviation and number of replicates for both the control and the treatment.
+Note that this will be done for each KPI separately (so, the KPI is the response variable where you’re interested in). The same is true for all other sections below. 
+
+See: https://bookdown.org/MathiasHarrer/Doing_Meta_Analysis_in_R/effects.html
+
+
+```{r step 4 example}
+
+  # require package Metafor (is already done, but not visible in html)
+  # require(metafor)
+
+  # calculate the effect size log-transformed response ratio (ROM)
+  es21 <- escalc(measure = "ROM", data = d1, 
+                   m1i = nuet_mean, sd1i = nuet_sd, n1i = replication,
+                   m2i = nuec_mean, sd2i = nuec_sd, n2i = replication )
+
+  # calculate the effect size for raw mean difference
+  es21 <- escalc(measure = "MD", data = d1, 
+                   m1i = nuet_mean, sd1i = nuet_sd, n1i = replication,
+                   m2i = nuec_mean, sd2i = nuec_sd, n2i = replication )
+  
+  # calculate the effect size for standardized mean difference
+  es21 <- escalc(measure = "SMD", data = d1, 
+                   m1i = nuet_mean, sd1i = nuet_sd, n1i = replication,
+                   m2i = nuec_mean, sd2i = nuec_sd, n2i = replication )
+
+```
+
+## Step 5. Aggregate effect sizes per factor
+
+When for a series of papers data is collected regarding the change in an indicator (the effect size) due to the application of a treatment, then one can estimate the mean effect across land uses, soil types, climate zones, soil health categories, and so on. This is often referred to as a “main factor analysis” where you do not look at interactions among variables, but just to explore how the impact of a measure depends on the aforementioned factors. For each of them, you will get a mean impact (by group) with a given uncertainty. This tells you how these factors affect the impact of a treatment.
+Mathematically it can be summarized as: Y = A * X + error, where you like to quantify the value A for specific groups / factors that affect the change in the indicator (being the response variable Y).
+
+See: https://bookdown.org/MathiasHarrer/Doing_Meta_Analysis_in_R/pooling-es.html
+See: https://bookdown.org/MathiasHarrer/Doing_Meta_Analysis_in_R/subgroup.html
+
+As a start i usually do a main-factor analysis to get a first overview on the impact of all independent variables on the response variable.
+The output is saved into one object, that can be used for plotting later but at least for the selection of relevant variables for further analysis.
+
+For more detailed illustration, see `analysis nue luncheng.R`, available in `scripts`
+
+```{r step 5 example, eval = FALSE}
+
+  # convert to data.table
+  d02 <- as.data.table(es21)
+
+  # what are the treatments to be assessed
+  d02.treat <- data.table(treatment =  c('ALL',unique(d02$management)))
+  
+  # add description of the labels, simplified in this case
+  d02.treat <- d02.treat[1:4]
+  d02.treat[treatment=='ALL',desc := 'All']
+  d02.treat[treatment=='EE',desc := 'Enhanced Efficiency']
+  d02.treat[treatment=='CF',desc := 'Combined fertilizer']
+  d02.treat[treatment=='RES',desc := 'Residue incorporation']
+
+   # do a main factor analysis of the factors controlling the response variable
+  # for more details on the function used, see ?rma.mv
+  
+  # add a list to store the coefficients
+  out2 = out3 = list()
+
+  # make a for loop to do a main analysis per treatment
+  for(i in d02.treat$treatment){
+    
+    if(i=='ALL'){
+      
+      # run without selection to estimate overall mean, with a random error structured by studyID
+      r_nue <- metafor::rma.mv(yi,vi, 
+                               data=d02,
+                               random= list(~ 1|studyid), 
+                               method="REML",
+                               sparse = TRUE)
+      
+    } else {
+      
+      # run for selected treatment with a random error structured by studyID
+      r_nue <- metafor::rma.mv(yi,vi, 
+                               data=d02[management==i,],
+                               random= list(~ 1|studyid), 
+                               method="REML",
+                               sparse = TRUE)
+      
+    }
+    
+    # save relevant output in a list: the model coefficient (corrected to relative change in %), the standard error, the pvalue and the label
+    out2[[i]] <- data.table(mean = as.numeric((exp(r_nue$b)-1)*100),
+                            se = as.numeric((exp(r_nue$se)-1)*100),
+                            pval = round(as.numeric(r_nue$pval),4),
+                            label =  paste0(d02.treat[treatment==i,desc],' (n=',r_nue$k,')')
+                            )
+    # print to console to see the progress
+    # print(paste0('treatment ',i,' has been simulated'))
+  }
+
+# convert all output from the list out2 to a data.table
+out2 <- rbindlist(out2)
+
+# see the object
+print(out2)
+  
+
+```
+
+## Step 6. Do a meta-regression to quantify the impact of main factors and their interactions
+
+After the main factor analysis, we can make a regression model that accounts for interactions among the site conditions controlling the impact of a measure. 
+Mathematically it can be summarized as: Y = A * X1 + B * X2 + C*X3 + D*X2*X3 + error, where you like to quantify the value A, B, C and D (the regression coefficients) for specific groups / factors (X1, X2 and X3) that affect the change in the indicator (being the response variable Y).
+This can easily be calculated via meta-analysis toolboxes like MetaWin or Metafor.
+See: https://bookdown.org/MathiasHarrer/Doing_Meta_Analysis_in_R/metareg.html
+See: https://bookdown.org/MathiasHarrer/Doing_Meta_Analysis_in_R/multilevel-ma.html
+
+
+## step 7. Visualise impact of main factors and interactions
+
+There are all kind of visualisations that can be made to show the performance of the model, the main factors controlling the impact of measures, and so on. Get inspired by a few examples.
+See: https://bookdown.org/MathiasHarrer/Doing_Meta_Analysis_in_R/forest.html
+
+## step 8. Apply the model
+
+To be added.
+
+## Literature
+
+To see some inspiring blogs, examples and so on:
+
+* https://cran.r-project.org/bin/windows/base/
+* https://posit.co/download/rstudio-desktop/
+* https://www.metafor-project.org/doku.php/metafor
+* https://www.r-bloggers.com/2021/03/data-table-everything-you-need-to-know-to-get-you-started-in-r/
+* https://s3.amazonaws.com/assets.datacamp.com/blog_assets/datatable_Cheat_Sheet_R.pdf
