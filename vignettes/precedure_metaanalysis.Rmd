@@ -803,6 +803,42 @@ That data.table can then be used as input for the meta-regression model to be ap
     terra::writeRaster(r.fin,'products/scenario_1.tif', overwrite = TRUE)
 ```
 
+Below a simple R code to plot a spatial map with a raster file on top of the polygon.
+
+```{r plot world map}
+
+  # read in libraries
+  library(ggplot2)
+  library(sf)
+  library(rnaturalearth)
+  library(rnaturalearthdata)
+  library(terra)
+  
+  # set theme
+  theme_set(theme_bw())
+  
+  # get the raster to plot
+  r1 <- terra::rast('products/scenario_1.tif')
+  
+  # convert to data.frame
+  r1.p <- as.data.frame(r1,xy=TRUE)
+  
+  # get base world map
+  world <- ne_countries(scale = "medium", returnclass = "sf")
+  
+  # plot a basic world map plot
+  p1 <- ggplot(data = world) + geom_sf(color = "black", fill = "gray92") +
+      geom_tile(data = r1.p,aes(x=x,y=y,fill= improvement)) +
+      scale_fill_viridis_c()+ theme_void() +
+      theme(legend.position = 'bottom') +
+      xlab("Longitude") + ylab("Latitude") +
+      ggtitle("World map", subtitle = "Mean change for scenario 1") +
+      coord_sf(crs = 4326)
+  # save the file (use arguments width, height and units to adapt the size of the plot on disk)
+  ggsave(plot = p1, filename = 'products/nue_effect_s1.jpg')
+
+```
+
 
 ## Literature
 
