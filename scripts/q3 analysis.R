@@ -12,7 +12,7 @@ require(ggplot2)
 d1 <- as.data.table(read_xlsx('data/rq3_database.xlsx',sheet='RQ3_database'))
 
 # what are the unique KPIs included
-table(d1$d1$kpi_type)
+table(d1$kpi_type)
 
 # estimate missing SD and n
 
@@ -26,7 +26,7 @@ table(d1$d1$kpi_type)
 
   # replace missing SD by 1.25 * mean CV * mean
   d1[is.na(kpi_treat_sd), kpi_treat_sd := cv_treat_mean * 1.25 * kpi_treat_mean]
-  d1[is.na(kpi_control_sd), kpi_control_sd := cv_control_mean * 1.25 * kpi_control_sd]
+  d1[is.na(kpi_control_sd), kpi_control_sd := cv_control_mean * 1.25 * kpi_control_mean]
   
   # remove columns not needed any more
   d1[,c('cv_treat','cv_control','cv_treat_mean','cv_control_mean') := NULL]
@@ -39,7 +39,16 @@ table(d1$d1$kpi_type)
   # remove observations without a control or treatment value
   d2 <- d2[!(is.na(kpi_treat_mean) | is.na(kpi_control_mean))]
   
-  # add response ratio
+  # check the data.table on missing values
+  summary(d2)
+  
+  # rename the column with a difficult name to select
+  setnames(d2,old = 'duration (days)', new = 'duration_days')
+  
+  # i see that duration has 3 missing values, so i replaced these values by the median value
+  d2[is.na(duration_days), duration_days := median(d2$duration_days,na.rm=TRUE)]
+  
+  # add response ratio as effect size; you can select another by adapting "measure" argument
   d2 <- escalc(measure = "ROM", data = d2, 
                m1i = kpi_treat_mean , sd1i = kpi_treat_sd , n1i = replication,
                m2i = kpi_control_mean, sd2i = kpi_control_sd, n2i = replication)
@@ -49,9 +58,6 @@ table(d1$d1$kpi_type)
 
   # remove some colums to make visualisation in console easier
   d2[,c('location','man_treatment','man_control','control_composition','year','mat','map') := NULL]
-  
-  # rename column name
-  setnames(d2,old = c('duration..days.'),new = 'duration_days')
   
   # add id based on order yi
   d2[, id := frankv(yi,order = -1)]
@@ -151,7 +157,7 @@ table(d1$d1$kpi_type)
 
   # make a full model with all main factors together    
   m3.full <- metafor::rma.mv(yi,vi, 
-                             mods = ~animal_type + supplement_category + supplemental_rate + stage -1,
+                             mods = ~animal_type + supplement_category + supplemental_rate + stage,
                              data=d2,random= list(~ 1|study_ID), method="REML",sparse = TRUE)
   
   # analyse summary stats
@@ -160,9 +166,13 @@ table(d1$d1$kpi_type)
   # refine the model (if desired)
   # steps to do: add variables plus interactions (* for all interactions plus main factors, : for interactions only), check pvalue
   # if within a variable one subgroup is significant and others not, then adjust the groupings
+  # so, you have the options:
+  # only a model with additive factors => use the plus sign in the mods argument
+  # if you have a model with main factors AND interactions => use the "*" sign in the mods argument
+  # if you have a model with ONLY interactions => use then the ":" sign
   d2[,sup_cat := fifelse(grepl('micro',supplement_category),'microalgae','other')]
   m3.full <- metafor::rma.mv(yi,vi, 
-                             mods = ~ supplemental_rate + stage + sup_cat -1,
+                             mods = ~ supplemental_rate + stage : sup_cat,
                              data=d2,random= list(~ 1|study_ID), method="REML",sparse = TRUE)
   
   # collect stats of the model
@@ -303,6 +313,9 @@ table(d1$d1$kpi_type)
   # show anova whether full model is signifiantly different from empty model
   anova(m3.full,m3.empty,refit = T)
   
+  # assume you like to now the impact of protein source on animal type = 'pig', stage ='finishing',syp_cat='rapeseed',
+  # and supplemental_rate = 50
+  # predict: 50 * 0.0501 + 1 * -0.137 + 0 * -0.11 + 0* -0.260 + 0.1112 + 0 * 0.0727 - 0.0221 * 50 * 0
   
   
 # --- Analysis for KPI 3 -----
