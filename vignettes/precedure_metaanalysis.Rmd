@@ -239,7 +239,7 @@ See: https://bookdown.org/MathiasHarrer/Doing_Meta_Analysis_in_R/multilevel-ma.h
 
 To compare models with each other i first made a short summary function to retreive statistical data from the models developed, and to evaluate the model performance. There are more performance metrices available, and you can adapt this helper function, but for the first approach, this is sufficient. It firstly derives the Aiken criteria (AIC), then the log likelyhood (ll), then the improvement in ll compared to an empty baseline model (so, a model without explanatory variables), and the change in explained variance (R2), and it gives the p-value. This implies that a model performance is compared with a baseline model.
 
-```{r meta regression helper}
+```{r meta regression helper, eval = FALSE}
 
 # make a function to extract relevant model statistics
   estats <- function(model_new,model_base){
@@ -262,7 +262,7 @@ Note that in linear regression models in R, the `*` sign means main factors plus
 
 When you analyse the summary stats of this model (r_nue_5 in this case) then its clear that fertilizer type and fertilizer do have a strong impact on the NUE wheras the site factors had only limited impact.  
 
-```{r meta regression}
+```{r meta regression, eval = FALSE}
 
   # run without a main factor selection to estimate overall mean
   r_nue_0 <- rma.mv(yi,vi, data = d02,random= list(~ 1|studyid), method="REML",sparse = TRUE)
@@ -324,7 +324,7 @@ See: https://bookdown.org/MathiasHarrer/Doing_Meta_Analysis_in_R/forest.html
 
 To apply the model on spatial datasets one has first to prepare spatial raster files for all relevant properties that are needed in the model developed in step 6. Below some examples from datasources retreived from literature, where the data are preprocessed and stored as tif file in this repo. The code is shown how these files are prepared, however the source data is not given due to memory reasons in git. Note that i show here some maps for global application, but for all variables similar maps can be prepared on EU level using datasets from INTEGRATOR, LUCAS and other EU data sources.
 
-```{r prepare global raster maps}
+```{r prepare global raster maps, eval = FALSE}
   
   # load climatic data
   if(FALSE){
@@ -584,7 +584,7 @@ To apply the model on spatial datasets one has first to prepare spatial raster f
 When the datasets are available (and they are, see the directory data) then one can read the rasters and convert them into a single data.table.
 That data.table can then be used as input for the meta-regression model to be applied.
 
-```{r application meta-regression}
+```{r application meta-regression, eval = FALSE}
 
  # read all rasters
 
@@ -805,7 +805,7 @@ That data.table can then be used as input for the meta-regression model to be ap
 
 Below a simple R code to plot a spatial map with a raster file on top of the polygon.
 
-```{r plot world map}
+```{r plot world map,eval=FALSE}
 
   # read in libraries
   library(ggplot2)
