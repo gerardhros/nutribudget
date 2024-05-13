@@ -26,7 +26,7 @@ table(d1$d1$kpi_type)
 
   # replace missing SD by 1.25 * mean CV * mean
   d1[is.na(kpi_treat_sd), kpi_treat_sd := cv_treat_mean * 1.25 * kpi_treat_mean]
-  d1[is.na(kpi_control_sd), kpi_control_sd := cv_treat_mean * 1.25 * kpi_treat_mean]
+  d1[is.na(kpi_control_sd), kpi_control_sd := cv_control_mean * 1.25 * kpi_control_sd]
   
   # remove columns not needed any more
   d1[,c('cv_treat','cv_control','cv_treat_mean','cv_control_mean') := NULL]
@@ -304,4 +304,14 @@ table(d1$d1$kpi_type)
   anova(m3.full,m3.empty,refit = T)
   
   
+  
+# --- Analysis for KPI 3 -----
+  
+  # there are quite some cases without a control.
+  
+  # subset the file
+  d2 <- d1[kpi_type =='NUE']
+  
+  # remove observations without a control or treatment value
+  d2 <- d2[!(is.na(kpi_treat_mean) | is.na(kpi_control_mean))]
   
