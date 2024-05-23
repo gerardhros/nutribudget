@@ -9,11 +9,10 @@ require(readxl);require(terra);require(data.table);require(sf)
 require(stringr); require(foreign)
 
 # load in the data with location
-d1 <- readxl::read_xlsx('data/luncheng_2023_nue.xlsx',sheet = "Tables")
-d1 <- as.data.table(d1)
+d1 <- fread('data/yield_lonlat_unique.csv')
 
 # convert to spatial object
-s1 <- st_as_sf(d1,coords = c('lon','lat'),crs = 4326)
+s1 <- st_as_sf(d1,coords = c('lon_deg','lat_deg'),crs = 4326)
 s1 <- vect(s1)
 
 # read in dbf file for metzger climatic regions
@@ -26,6 +25,7 @@ s2 <- foreign::read.dbf('D:/DATA/03 metzger/GenS_v3.dbf')
 
 # read in the rasters via hard drive
 r1 <- list.files('D:/DATA/01 soil',pattern = 'tif|nc',full.names = T)
+r1 <- r1[!grepl('stack',r1)]
 r2 <- list.files('D:/DATA/02 climate',pattern = 'tif|nc',full.names = T)
 r3 <- list.files('D:/DATA/03 metzger',pattern = 'tif|nc',full.names = T)
 
@@ -128,12 +128,12 @@ climate <- rast(climate)
   c2.metzger <- c2.metzger[,.(ID,GEnZname,GEnZ,GEnS)]
 
 # merge the data files
-
-  dt <- d1[,.(ID,lon = long_cor2,lat = lat_cor2, id_site)]
+  d1[,ID := 1:.N]
+  dt <- d1[,.(ID,lon = lon_deg,lat = lat_deg)]
   dt <- merge(dt,c2.isric, by = 'ID')
   dt <- merge(dt,c2.climate, by = 'ID')
   dt <- merge(dt,c2.metzger,by='ID')
 
 # save the file
 
-  fwrite(dt,'products/220505 covariates metaanalysis.csv')
+  fwrite(dt,'products/240523_covariates_yield.csv')
