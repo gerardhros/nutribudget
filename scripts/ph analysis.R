@@ -8,20 +8,21 @@ require(readxl);require(data.table);require(metafor);require(ggplot2)
 # clear environment
 rm(list=ls())
 
-# read in the database (NOTE that I updated some SE and SD values
+# read in the database
 d1 <- as.data.table(read_xlsx('data/ph_database.xlsx',sheet='database'))
 
 # update column names to simply internal references to the column names (so no spaces or brackets)
+# and set all column names to lower case
 setnames(d1,old = c('CEC (meq/100g)'),new = c('cec'))
 setnames(d1,tolower(colnames(d1)))
 
 # remove text from latitude column, and make the column numeric (text is aumatically converted to NA)
 d1[,lat := as.numeric(lat)]
 
-# save the unique lon-lat for covariate extraction
-# the covariates are collected in script coariate extraction
-# below the preparation is in an ifelse statement, and the prepared file is read in
-# subset only relevant columns, and write csv file, only done once, therefore in FALSE ifelse statement
+# save the unique lon-lat as csv for covariate extraction
+# the covariates are separately collected in script covariate extraction
+# this you only need to do once (run the code within the FALSE statement)
+# then a csv file is saved, that will be read in al subseqent times you run this script
 if(FALSE){
   # subset only relevant columns
   d1.lonlat <- d1[,.(lat,lon)]
@@ -37,6 +38,10 @@ if(FALSE){
 
 # combine the extracted coariates with the original dataset
 d1 <- merge(d1,d1.cov,by = c('lat','lon'),all.x=TRUE)
+
+# set covariates to mean value when lon-lat is missing (action Salim: better to take most nearby proxy lon-lat)
+cols <- colnames(d1)[grepl('_mean|_sd',colnames(d1))]
+d1[,c(cols) := lapply(.SD,function(x) fifelse(is.na(x),median(x,na.rm=T),x)),.SDcols = cols]
 
 # estimate uncertainty when SE and SD are missing
 
@@ -71,6 +76,7 @@ cols <- c('duration','mat','map','soc','cec','ph','clay','bs')
 
 # apply the function to expected numeric variables  
 d1[, c(cols) := lapply(.SD,function(x) hfunconvert(x)),.SDcols = cols,by=id]
+d1[, c(cols) := lapply(.SD,function(x) as.numeric(x)),.SDcols = cols]
 
 # regroup crop type to minimize options (to be adapted)
 d1[,crop_type := tolower(crop_type)]
@@ -97,16 +103,8 @@ d1[is.na(crop_rotation), crop_rotation := 'unknown']
 d1[is.na(crop_residue), crop_residue := 'unknown']
 d1[is.na(tillage)|grepl('conv|Plow|Plough|^Till',tillage), tillage := 'CT']
 d1[grepl('no till|Mineral ',tillage), tillage := 'NT']
-
-# estimate missing NPKMg doses (MA, please update the input for strange combinations)
-d1[,nutri_dose_N := as.numeric(nutri_dose_N)]
-d1[,nutri_dose_P := as.numeric(nutri_dose_P)]
-d1[,nutri_dose_K := as.numeric(nutri_dose_K)]
-d1[,nutri_dose_Mg := as.numeric(nutri_dose_Mg)]
-d1[is.na(nutri_dose_N),nutri_dose_N := median(d1$nutri_dose_N,na.rm=T)]
-d1[is.na(nutri_dose_P),nutri_dose_P := median(d1$nutri_dose_P,na.rm=T)]
-d1[is.na(nutri_dose_K),nutri_dose_K := median(d1$nutri_dose_K,na.rm=T)]
-d1[is.na(nutri_dose_Mg),nutri_dose_Mg := median(d1$nutri_dose_Mg,na.rm=T)]
+d1[is.na(man_code),man_code := 'unknown']
+# estimate missing NPKMg doses (not in use)
 
 # replace missing properties
 d1[is.na(ph), ph := median(d1$ph,na.rm=T)]
@@ -114,25 +112,32 @@ d1[is.na(duration), duration := median(d1$duration,na.rm=T)]
 d1[is.na(mat), mat := median(d1$mat,na.rm=T)]
 d1[is.na(map), map := median(d1$map,na.rm=T)]
 d1[is.na(soc), soc := median(d1$soc,na.rm=T)]
+d1[is.na(clay), clay := median(d1$clay,na.rm=T)]
 
 # replace missing replication
 d1[is.na(replication), replication := 2]
 
-# --- Analysis for KPI crop yield -----
+# --- Analysis for KPI ph -----
 
 # remove observations without a control or treatment value
 d2 <- d1[!(is.na(kpi_treat) | is.na(kpi_control))]
 
 # check the data.table on missing values
+# note that bs adn cec has too limited numbers, so not use them
 summary(d2)
 
-# add response ratio as effect size
-d2 <- escalc(measure = "ROM", data = d2, 
+# add standardized mean difference response ratio as effect size
+# other options are also possible, change measure argument.
+# see ?escalc for argument description and examples
+d2 <- escalc(measure = "SMD", data = d2, 
              m1i = kpi_treat , sd1i = kpi_treat_sd , n1i = replication,
              m2i = kpi_control, sd2i= kpi_contr_sd, n2i = replication)
 
 # convert back to data.table
 d2 <- as.data.table(d2)
+
+# remove items with missing yi or vi
+d2 <- d2[!is.na(yi) | !is.na(vi)]
 
 # add id based on order yi
 d2[, id := frankv(yi,order = -1)]
@@ -145,23 +150,22 @@ ggplot(data = d2,aes(x= id,y=yi)) +
   theme_bw() + xlab('study id') + ylab('lnRR, change in Crop yield') + 
   ggtitle('Observed changes in Crop yield due to Crop practices')
 
-# given the huge changes and deline with a factor 3 is unlikely
-d2 <- d2[abs(yi)<=2]
+# given the huge changes and deline, a standardized change bigger than 3 is unlikely
+d2 <- d2[abs(yi)<=3]
 
 # estimate mean response across all studies
 m1 <- metafor::rma.mv(yi,vi, 
                       data=d2,
-                      random= list(~ 1|study_ID), 
+                      random= list(~ 1|study_id), 
                       method="REML",
                       sparse = TRUE)
 
 # see the summary of the model
 summary(m1)
 
-# analyse whether the mean response differs per factor
-fcols <- c('crop_type','crop_residue','cover_crop','crop_rotation', 'tillage', 
-           'fertilizer_type','ph','man_code','fertilizer_type',
-           'nutri_dose_N','nutri_dose_P','nutri_dose_K','nutri_dose_Mg',
+# analyse whether the mean response differs per factor.
+fcols <- c('crop_type','crop_residue','crop_rotation', 'tillage', 
+           'fertilizer_type','ph','man_code','fertilizer_type','man_code',
            'bdod_mean_0_5','cec_mean_0_5','clay_mean_0_5','ntot_mean_0_5',
            'phw_mean_0_5','soc_mean_0_5',
            'tmp_mean','pet_mean','tmp_sd','pet_sd',
@@ -185,7 +189,7 @@ for(i in fcols){
     
     # do the meta-analysis for categorial variable
     m2 <- metafor::rma.mv(yi,vi, mods = ~factor(evar),data=d2,
-                          random= list(~ 1|study_ID), method="REML",sparse = TRUE)
+                          random= list(~ 1|study_id), method="REML",sparse = TRUE)
     
     # collect model coefficients
     m2.sum <- summary(m2)
@@ -197,7 +201,7 @@ for(i in fcols){
     
     # do the meta-analysis for a numerical variable
     m2 <- metafor::rma.mv(yi,vi, mods = ~evar,data=d2,
-                          random= list(~ 1|study_ID), method="REML",sparse = TRUE)
+                          random= list(~ 1|study_id), method="REML",sparse = TRUE)
   }
   
   # add to list
@@ -212,9 +216,8 @@ out.dgr <- rbindlist(out.dgr)
 
 # remove cropname (too mucht options, use only grouped one)
 out.dgr <- out.dgr[factor != 'crop_type']
-# make barplot (figure formatting: need to be done)
-out.dgr[, pfactor := as.factor(factor)]
-ggplot(data=out.dgr[var!='intercept']) +
+# make barplot (figure formatting: need to be done as well clear names for y-ax)
+ggplot(data=out.dgr[var!='intercept' & var != 'intrcpt']) +
   geom_bar(aes(x=estimate,y= var),stat="identity") + 
   geom_errorbar(aes(y=var,xmin = estimate - se,xmax = estimate +se),width=0.4) + theme_bw() +
   ggtitle('effect of main factors on Crop yield') +
@@ -233,33 +236,44 @@ estats <- function(model_new,model_base){
 }
 
 # make first an empty model
-m3.empty <- metafor::rma.mv(yi,vi, data=d2,random= list(~ 1|study_ID), method="REML",sparse = TRUE)
+m3.empty <- metafor::rma.mv(yi,vi, data=d2,random= list(~ 1|study_id), method="REML",sparse = TRUE)
 
-# make a full model with all main factors together    
+# make a full model with all main factors together
+# add here all the variables (as given in out.dgr) that are signficant. 
+# Insignifcant variables can be added but only if you think there is a mechanistic reason and you like to show/proof that there is limited/no effect
+# note that the total number of variables can not be too high given the limited number of observations.
 m3.full <- metafor::rma.mv(yi,vi, 
-                           mods = ~ctype + crop_residue + cover_crop + crop_rotation + 
-                             tillage + fertilizer_type + nutri_dose_N + ntot_mean_0_5 +
-                             ph + tmp_mean + pet_mean,
-                           data=d2,random= list(~ 1|study_ID), method="REML",sparse = TRUE)
+                           mods = ~ctype +
+                             mat + map + soc + ph + clay +
+                             fertilizer_type + man_code + 
+                             tillage + ntot_mean_0_5 +phw_mean_0_5+soc_mean_0_5+
+                             tmp_mean + pet_mean,
+                           data=d2,random= list(~ 1|study_id), method="REML",sparse = TRUE)
 
 # analyse summary stats
 summary(m3.full)
 
 
-# I DO NOT UNDERSTAND THIS PART refine the model (if desired)
+# Fitting the best final model to predict the variation in changes in soil pH
 # steps to do: add variables plus interactions (* for all interactions plus main factors, : for interactions only), check pvalue
 # if within a variable one subgroup is significant and others not, then adjust the groupings
 # so, you have the options:
 # only a model with additive factors => use the plus sign in the mods argument
 # if you have a model with main factors AND interactions => use the "*" sign in the mods argument
 # if you have a model with ONLY interactions => use then the ":" sign
-d2[,sup_cat := fifelse(grepl('micro',crop_type),'x','other')]
-m3.full <- metafor::rma.mv(yi,vi, 
-                           mods = ~ supplemental_rate + stage : sup_cat,
-                           data=d2,random= list(~ 1|study_ID), method="REML",sparse = TRUE)
 
-# It doesn't work probably because of above collect stats of the model
+  # here an example to regroup man_code for example (use two fake abbreviations MP1, MP2 and MP3)
+  d2[grepl('CC|Liming',man_code),man_code2 := 'MP1']
+  d2[grepl('CF|NPK|unknown',man_code),man_code2 := 'MP2']
+  d2[grepl('NT|OF|BC',man_code),man_code2 := 'MP3']
+  
+  # build here your final model
+  m3.full <- metafor::rma.mv(yi,vi, 
+                             mods = ~ man_code2 + soc_mean_0_5 + phw_mean_0_5 -1,
+                             data=d2,random= list(~ 1|study_id), method="REML",sparse = TRUE)
+
+# give the stats of the foreseen model improvement by the nuw model
 estats(m3.full,m3.empty)
 
-# It doesn't work probabl ybecause of above show anova whether full model is signifiantly different from empty model
+# show anova whether full model is signifiantly different from empty model
 anova(m3.full,m3.empty,refit = T)
