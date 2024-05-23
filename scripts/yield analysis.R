@@ -53,6 +53,14 @@ setnames(d1,
   d1[!is.na(kpi_contr_sd) & is.na(kpi_contr_se), kpi_contr_se := kpi_contr_sd / sqrt(replication)]
   d1[!is.na(kpi_treat_sd) & is.na(kpi_treat_se), kpi_treat_se := kpi_treat_sd / sqrt(replication)]
 
+  # the units of crop yield are not everywhere equal Need to be checked by MA. For now, adapt here with some expert knowledge
+  d1[kpi_treat < 1000, kpi_treat := kpi_treat * 1000]
+  d1[kpi_control<1000, kpi_control := kpi_control * 1000]
+
+  # the SD values are unbelievable low. Need to be checked by MA. For now, adapt here with expert knowledge
+  d1[kpi_treat_sd/kpi_treat <= 0.01, kpi_treat_sd := kpi_treat_sd * 1000]
+  d1[kpi_contr_sd/kpi_control <= 0.01, kpi_contr_sd := kpi_contr_sd * 1000]
+  
   # add coefficient of variation 
   d1[,cv_treat := kpi_treat_sd / kpi_treat]
   d1[,cv_control := kpi_contr_sd / kpi_control]
@@ -67,7 +75,11 @@ setnames(d1,
 
   # remove columns not needed any more
   d1[,c('cv_treat','cv_control','cv_treat_mean','cv_control_mean') := NULL]
-  d1[,c('lat_deg','lon_deg','lat','lon','reference') := NULL]
+  d1[,c('lat_deg','lon_deg','lat','lon','reference','GEnZname','kpi_treat_se','kpi_contr_se') := NULL]
+  
+  # use only topsoil properties ISRIC and remove subsoil properties
+  cols <- colnames(d1)[grepl('_5_15$|15_30$',colnames(d1))]
+  d1[,c(cols):=NULL]
   
   # update dataset (MA check that not all data entries are numeric)
   d1[, mat := as.numeric(mat)]
@@ -80,110 +92,156 @@ setnames(d1,
   d1[is.na(ph),ph := as.numeric(pH)]  
   d1[,pH := NULL]
   eclay <- function(x){mean(as.numeric(unlist(strsplit(gsub('<|>','',x),'-|~'))))}
-  d1[, clay2 := eclay(clay),by=dataset_ID] # note that this changes range into mean value
+  d1[, clay := eclay(clay),by=dataset_ID] # note that ranges are converted into a mean value
   
-# --- Analysis for KPI crop yield
+  # regroup crop type to minimize options
+  d1[,crop_type := tolower(crop_type)]
+  d1[grepl('barley|wheat|oat|cereal|rye|spelt',crop_type),ctype := 'cereal']
+  d1[is.na(ctype) & grepl('vegetable|carrot|onion|melon|tomato|pepper|cabbage',crop_type),ctype := 'vegetable']
+  d1[is.na(ctype) & grepl('bean|pea|rape|oil',crop_type),ctype := 'beans_oilcrop']
+  d1[is.na(ctype) & grepl('potato|sugar beet',crop_type),ctype := 'arable']
+  d1[is.na(ctype) & grepl('maize',crop_type),ctype := 'maize']
+  d1[is.na(ctype) & grepl('rice',crop_type),ctype := 'rice']
+  d1[is.na(ctype),ctype := 'other']
+  
+  # regroup fertilizer type
+  d1[, fertilizer_type := tolower(fertilizer_type)]
+  d1[is.na(fertilizer_type), fertilizer_type := 'unknown']
+  d1[grepl('^mineral$|inorganic',fertilizer_type), fertilizer_type := 'inorganic']
+  d1[grepl(',|integrat',fertilizer_type), fertilizer_type := 'combined']
+  
+  # regroup nutricode
+  d1[grepl('N, K, P|N/P/K|N, P, K',nutri_code), nutri_code := 'NPK']
+  d1[grepl('N, K',nutri_code), nutri_code := 'NK']
+  d1[grepl('N, P',nutri_code), nutri_code := 'NP']
+  d1[is.na(nutri_code), nutri_code := 'unknown']
+  
+  # add unknown
+  d1[is.na(cover_crop), cover_crop := 'unknown']
+  d1[is.na(crop_rotation), crop_rotation := 'unknown']
+  d1[is.na(crop_residue), crop_residue := 'unknown']
+  d1[is.na(tillage) | tillage == 'yes', tillage := 'CT']
+  d1[grepl(',',tillage), tillage := 'CT']
+  d1[tillage == 'no', tillage :='NT']
+  
+  # estimate missing NPKMg doses (MA, please update the input for strange combinations)
+  d1[,nutri_dose_N := as.numeric(nutri_dose_N)]
+  d1[,nutri_dose_P := as.numeric(nutri_dose_P)]
+  d1[,nutri_dose_K := as.numeric(nutri_dose_K)]
+  d1[,nutri_dose_Mg := as.numeric(nutri_dose_Mg)]
+  d1[is.na(nutri_dose_N),nutri_dose_N := median(d1$nutri_dose_N,na.rm=T)]
+  d1[is.na(nutri_dose_P),nutri_dose_P := median(d1$nutri_dose_P,na.rm=T)]
+  d1[is.na(nutri_dose_K),nutri_dose_K := median(d1$nutri_dose_K,na.rm=T)]
+  d1[is.na(nutri_dose_Mg),nutri_dose_Mg := median(d1$nutri_dose_Mg,na.rm=T)]
+  
+  # replace missing properties
+  d1[is.na(ph), ph := median(d1$ph,na.rm=T)]
+  d1[is.na(duration), duration := median(d1$duration,na.rm=T)]
+  d1[is.na(mat), mat := median(d1$mat,na.rm=T)]
+  d1[is.na(map), map := median(d1$map,na.rm=T)]
+  d1[is.na(soc), soc := median(d1$soc,na.rm=T)]
+  
+  # replace missing replication
+  d1[is.na(replication), replication := 2]
+  
+# --- Analysis for KPI crop yield -----
 
-# remove observations without a control or treatment value
-d2 <- d1[!(is.na(kpi_treat) | is.na(kpi_control))]
+  # remove observations without a control or treatment value
+  d2 <- d1[!(is.na(kpi_treat) | is.na(kpi_control))]
 
-# check the data.table on missing values
-summary(d2)
+  # check the data.table on missing values
+  summary(d2)
 
+  # add response ratio as effect size
+  d2 <- escalc(measure = "ROM", data = d2, 
+               m1i = kpi_treat , sd1i = kpi_treat_sd , n1i = replication,
+               m2i = kpi_control, sd2i= kpi_contr_sd, n2i = replication)
 
-# duration have many missing values, so i replaced these values by the median value
-d2[is.na(d2$duration), duration := median(d2$duration,na.rm =TRUE)]
+  # convert back to data.table
+  d2 <- as.data.table(d2)
 
-#add the standart deviation when standart error is present
-d2[, kpi_contr_sd1 := kpi_contr_se * sqrt(replication)]
-d2[, kpi_treat_sd1 := kpi_treat_se * sqrt(replication)]
+  # add id based on order yi
+  d2[, id := frankv(yi,order = -1)]
 
-#fill in missing values in standart deviations by adding a median value
-d2[is.na (d2$kpi_contr_sd1),kpi_contr_sd1 := median(d2$kpi_contr_sd1, 
-                                                    na.rm = TRUE) ]
-d2[is.na (d2$kpi_treat_sd1),kpi_treat_sd := median(d2$kpi_treat_sd1,
-                                                   na.rm = TRUE) ]
+  # make first plot of individual observations
+  ggplot(data = d2,aes(x= id,y=yi)) + 
+    geom_point() + 
+    geom_line()+
+    geom_errorbar(aes(x=id,ymin = yi-vi,ymax=yi+vi))+
+    theme_bw() + xlab('study id') + ylab('lnRR, change in Crop yield') + 
+    ggtitle('Observed changes in Crop yield due to Crop practices')
 
-# add response ratio as effect size
-d2 <- escalc(measure = "ROM", data = d2, 
-             m1i = kpi_treat , sd1i = kpi_treat_sd1 , n1i = replication,
-             m2i = kpi_control, sd2i= kpi_contr_sd1, n2i = replication)
+  # given the huge changes and deline with a factor 3 is unlikely
+  d2 <- d2[abs(yi)<=2]
 
-# convert back to data.table
-d2 <- as.data.table(d2)
+  # estimate mean response across all studies
+  m1 <- metafor::rma.mv(yi,vi, 
+                        data=d2,
+                        random= list(~ 1|study_ID), 
+                        method="REML",
+                        sparse = TRUE)
 
-# remove some colums to make visualisation in console easier
-d2[,c('man_treatment','man_control','year','mat','map') := NULL]
-
-# add id based on order yi
-d2[, id := frankv(yi,order = -1)]
-
-# make first plot of individual observations
-ggplot(data = d2,aes(x= id,y=yi)) + 
-  geom_point() + 
-  geom_line()+
-  geom_errorbar(aes(x=id,ymin = yi-vi,ymax=yi+vi))+
-  theme_bw() + xlab('study id') + ylab('lnRR, change in Crop yield') + 
-  ggtitle('Observed changes in Crop yield due to Crop practices')
-
-
-# estimate mean response across all studies
-m1 <- metafor::rma.mv(yi,vi, 
-                      data=d2,
-                      random= list(~ 1|study_ID), 
-                      method="REML",
-                      sparse = TRUE)
-
-# see the summary of the model
-summary(m1)
+  # see the summary of the model
+  summary(m1)
 
 # analyse whether the mean response differs per factor
 fcols <- c('crop_type','crop_residue','cover_crop','crop_rotation', 'tillage', 
-           'fertilizer_type')
+           'fertilizer_type','ph','man_code','fertilizer_type',
+           'nutri_dose_N','nutri_dose_P','nutri_dose_K','nutri_dose_Mg',
+           'bdod_mean_0_5','cec_mean_0_5','clay_mean_0_5','ntot_mean_0_5',
+           'phw_mean_0_5','soc_mean_0_5',
+           'tmp_mean','pet_mean','tmp_sd','pet_sd',
+           'ctype')
 
 # make an empty list to store output
 out.dgr <- list()
 
-# Why we do that? do the analysis in a for loop
-for(i in fcols)
+# We analyse in a for loop the impact of individual factors explaining variation in response
+# this to avoid repetition (otherwise we have to build similar code for each factor seperately)
+for(i in fcols){
   
   # make a temporary variable 'evar'
   d2[,evar := get(i)]
 
-# is the variable categorial or not
-vartype = is.character(d2[,get(i)])
+  # is the variable categorial or not
+  vartype = is.character(d2[,get(i)])
 
-# do the meta-analysis for categorial variable
-if(vartype==TRUE){
-  
-  # do the meta-analysis
-  m2 <- metafor::rma.mv(yi,vi, mods = ~factor(evar)-1,data=d2,
-                        random= list(~ 1|study_ID), method="REML",sparse = TRUE)
-  
-  # collect model coefficients
-  m2.sum <- summary(m2)
-  m2.out <- as.data.table(coefficients(m2.sum))
-  m2.out[,factor := i]
-  m2.out[,var := gsub('factor\\(evar\\)','',rownames(m2.sum$b))]
-  
-} else{
-  
-  # do the meta-analysis
+  # do the meta-analysis for categorial variable
+  if(vartype==TRUE){
+    
+    # do the meta-analysis for categorial variable
+    m2 <- metafor::rma.mv(yi,vi, mods = ~factor(evar),data=d2,
+                          random= list(~ 1|study_ID), method="REML",sparse = TRUE)
+    
+    # collect model coefficients
+    m2.sum <- summary(m2)
+    m2.out <- as.data.table(coefficients(m2.sum))
+    m2.out[,factor := i]
+    m2.out[,var := gsub('factor\\(evar\\)','',rownames(m2.sum$b))]
+    
+  } else{
+    
+  # do the meta-analysis for a numerical variable
   m2 <- metafor::rma.mv(yi,vi, mods = ~evar,data=d2,
-                        random= list(~ 1|study_ID), method="REML",sparse = TRUE)}
-# add kpi type
-m2.out[,d2$kpi]
-
-# add to list
-out.dgr[[i]] <- copy(m2.out)
+                        random= list(~ 1|study_ID), method="REML",sparse = TRUE)
+  }
+  
+  # add to list
+  out.dgr[[i]] <- copy(m2.out)
+  
+  # print message
+  print(paste0('model build for parameter: ',i))
+}
 
 # convert list to one data.table
 out.dgr <- rbindlist(out.dgr)
 
+# remove cropname (too mucht options, use only grouped one)
+out.dgr <- out.dgr[factor != 'crop_type']
 # make barplot (figure formatting: need to be done)
 out.dgr[, pfactor := as.factor(factor)]
 ggplot(data=out.dgr[var!='intercept']) +
-  geom_bar(aes(x=estimate,y= reorder(var,pfactor),group = pfactor,fill=pfactor),stat="identity") + 
+  geom_bar(aes(x=estimate,y= var),stat="identity") + 
   geom_errorbar(aes(y=var,xmin = estimate - se,xmax = estimate +se),width=0.4) + theme_bw() +
   ggtitle('effect of main factors on Crop yield') +
   theme(legend.position = 'bottom')
@@ -205,7 +263,9 @@ m3.empty <- metafor::rma.mv(yi,vi, data=d2,random= list(~ 1|study_ID), method="R
 
 # make a full model with all main factors together    
 m3.full <- metafor::rma.mv(yi,vi, 
-                           mods = ~crop_type + crop_residue + cover_crop + crop_rotation + tillage + fertilizer_type,
+                           mods = ~ctype + crop_residue + cover_crop + crop_rotation + 
+                                   tillage + fertilizer_type + nutri_dose_N + ntot_mean_0_5 +
+                                   ph + tmp_mean + pet_mean,
                            data=d2,random= list(~ 1|study_ID), method="REML",sparse = TRUE)
 
 # analyse summary stats
