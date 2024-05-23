@@ -8,11 +8,19 @@ rm(list=ls())
 require(readxl);require(terra);require(data.table);require(sf)
 require(stringr); require(foreign)
 
-# load in the data with location
-d1 <- fread('data/yield_lonlat_unique.csv')
+# variable selection: options yield, ph
+var = 'ph' 
 
-# convert to spatial object
-s1 <- st_as_sf(d1,coords = c('lon_deg','lat_deg'),crs = 4326)
+# load in the data with location
+if(var=='yield'){
+  d1 <- fread('data/yield_lonlat_unique.csv')
+  setnames(d1,c('lon_deg','lat_deg'),c('lon','lat'))
+} else if(var=='ph'){
+  d1 <- fread('data/ph_lonlat_unique.csv')
+}
+
+# convert to a spatial object
+s1 <- st_as_sf(d1,coords = c('lon','lat'),crs = 4326)
 s1 <- vect(s1)
 
 # read in dbf file for metzger climatic regions
@@ -129,11 +137,16 @@ climate <- rast(climate)
 
 # merge the data files
   d1[,ID := 1:.N]
-  dt <- d1[,.(ID,lon = lon_deg,lat = lat_deg)]
+  dt <- d1[,.(ID,lon,lat)]
   dt <- merge(dt,c2.isric, by = 'ID')
   dt <- merge(dt,c2.climate, by = 'ID')
   dt <- merge(dt,c2.metzger,by='ID')
 
 # save the file
-
-  fwrite(dt,'products/240523_covariates_yield.csv')
+  if(var=='yield'){
+    fwrite(dt,'products/240523_covariates_yield.csv')
+  } else if(var=='ph'){
+    fwrite(dt,'products/240523_covariates_ph.csv')
+  }
+  
+ 
