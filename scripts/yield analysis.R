@@ -224,6 +224,13 @@ for(i in fcols){
   # do the meta-analysis for a numerical variable
   m2 <- metafor::rma.mv(yi,vi, mods = ~evar,data=d2,
                         random= list(~ 1|study_ID), method="REML",sparse = TRUE)
+  
+  # collect model coefficients
+  m2.sum <- summary(m2)
+  m2.out <- as.data.table(coefficients(m2.sum))
+  m2.out[,factor := i]
+  m2.out[,var := c('intercept',i)]
+  
   }
   
   # add to list
