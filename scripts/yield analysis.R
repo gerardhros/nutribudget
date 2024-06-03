@@ -144,6 +144,23 @@ setnames(d1,
   # replace missing replication
   d1[is.na(replication), replication := 2]
   
+# make plot sampling location
+  
+  require(sf)
+
+  # load in the base map
+  world <- map_data("world")
+  ggplot() +
+    geom_map(
+      data = world, map = world,
+      aes(long, lat, map_id = region),
+      color = "#999999", fill = "#CCCCCC", linewidth = 0.1) +
+    geom_point(data = d1.cov,aes(lon, lat), alpha = 1, size = 2,color='black') +
+    theme_bw()+
+    ylim(30,70)+
+    xlim(-20,40)+
+    coord_sf(crs=4326)
+  
 # --- Analysis for KPI crop yield -----
 
   # remove observations without a control or treatment value
