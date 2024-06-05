@@ -9,7 +9,7 @@ require(metafor)
 require(ggplot2)
 
 # read in the database
-data <- read_excel('data/rq4_database.xlsx',sheet='RQ4_database')
+data <- read_excel('data/RQ4_database.xlsx',sheet='RQ4_database')
 print(data)
 data$kpi_mean<-as.numeric(data$kpi_mean)
 # convert the variables to a factor with the desired order
