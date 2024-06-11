@@ -109,23 +109,23 @@ ggplot(d1,aes(x= man_treatment,y=kpi_mean,fill=experiment_scale)) +
 library(dplyr)
 
 # Check unique values for animal control
-cat("\nUnique values in animal control before conversion:\n")
-print(unique(d2$animal_control))
+cat("\nUnique values in man_treatment before conversion:\n")
+print(unique(d2$man_treatment))
 
 # Convert columns to factors with specified levels
 d2 <- d2 %>%
   mutate(
     end_product_type = as.factor(end_product_type),
-    animal_control = factor(animal_control, levels = c("mix","pig","poultry","cattle","dairy"))
+    animal_control = factor(man_treatment, levels = c("struvite precipitation","stripping and scrubbing", "centrifugation","ammonia scrubbing","screw press","ultrafiltration","microfiltration","reverse osmosis","microalgae"))
   )
 
 # Check the unique values after conversion
-cat("\nUnique values in animal_control after conversion:\n")
-print(unique(d2$animal_control))
+cat("\nUnique values in man_treatment after conversion:\n")
+print(unique(d2$man_treatment))
 
 # Check for levels that are not present in the data
-cat("\nLevels in animal_control:\n")
-print(levels(d2$animal_control))
+cat("\nLevels in man_treatment:\n")
+print(levels(d2$man_treatment))
 
 # Drop unused levels
 d2 <- droplevels(d2)
@@ -135,11 +135,11 @@ cat("\nSummary of d2 after dropping unused levels:\n")
 print(summary(d2))
 
 # Check if experiment_scale still has fewer than two levels
-if (length(unique(d2$animal_control)) < 2) {
+if (length(unique(d2$experiment_scale)) < 2) {
   stop("experiment_scale must have at least two levels")
 }
 
 # Fit the linear model again
-m1 <- lm(kpi_mean ~ experiment_scale * animal_control, data = d2)
+m1 <- lm(kpi_mean ~ experiment_scale * man_treatment, data = d2)
 cat("\nSummary of the linear model:\n")
 print(summary(m1))
