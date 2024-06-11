@@ -170,12 +170,12 @@ table(d1$kpi_type)
   # only a model with additive factors => use the plus sign in the mods argument
   # if you have a model with main factors AND interactions => use the "*" sign in the mods argument
   # if you have a model with ONLY interactions => use then the ":" sign
-  d2[,sup_cat := fifelse(grepl('insect',supplement_category),'insect','other')] # the forest plot showed that "insect" had a positive effect while other supplement_category showed negative effects on DGR
-  d2[,early_stage := fifelse(grepl('finishing|whole',stage),'other',stage)] 
+  #d2[,sup_cat := fifelse(grepl('insect',supplement_category),'insect','other')] # the forest plot showed that "insect" had a positive effect while other supplement_category showed negative effects on DGR
+  #d2[,early_stage := fifelse(grepl('finishing|whole',stage),'other',stage)] 
   # Find the unique values for each variable
   sapply(lapply(d2, unique), length)
   m3.full <- metafor::rma.mv(yi,vi, 
-                             mods = ~ supplemental_rate + animal_type +early_stage + early_stage * sup_cat,
+                             mods = ~ supplemental_rate *supplement_category,
                              data=d2,random= list(~ 1|study_ID), method="REML",sparse = TRUE)
   
   # analyse summary stats
@@ -186,6 +186,42 @@ table(d1$kpi_type)
   # show anova whether full model is signifiantly different from empty model
   anova(m3.full,m3.empty,refit = T)
   
+ # Extract and tidy the results
+  m3_tidy <- tidy(m3.full)
+  
+  # Define new column values
+  new_column_values <- c("intercept","supplemental_rate","supplemental_category","supplemental_category","supplemental_category","supplemental_category","supplemental_category","interaction","interaction","interaction","interaction","interaction")
+  
+  # Add new column to data frame
+  m3_tidy$factor <- new_column_values
+  
+  # Add a column for significance stars
+  m3_tidy$significance <- ifelse(m3_tidy$p.value < 0.001, "***", 
+                              ifelse(m3_tidy$p.value < 0.01, "**", 
+                                     ifelse(m3_tidy$p.value < 0.05, "*", "")))
+  print(m3_tidy$term)
+  # Named vector with abbreviations
+  abbreviations <- c("supplemental_rate"="rate","supplement_categorygrassjuice"="grassjuice","supplement_categoryinsect"="insect","supplement_categorylegumes"="legumes","supplement_categorymicroalgae"="microalgae","supplement_categoryrapeseed"="rapeseed","supplemental_rate:supplement_categorygrassjuice"="rate+grassjuice","supplemental_rate:supplement_categoryinsect"="rate+insect","supplemental_rate:supplement_categorylegumes"="rate+legumes","supplemental_rate:supplement_categorymicroalgae"="rate+microalgae","supplemental_rate:supplement_categoryrapeseed"="rate+rapeseed","intercept"="intercept")
+  # Define the order of the terms
+  m3_tidy$term <- factor(m3_tidy$term, levels = c("supplemental_rate","supplement_categorygrassjuice","supplement_categoryinsect","supplement_categorylegumes","supplement_categorymicroalgae","supplement_categoryrapeseed","supplemental_rate:supplement_categorygrassjuice","supplemental_rate:supplement_categoryinsect","supplemental_rate:supplement_categorylegumes","supplemental_rate:supplement_categorymicroalgae","supplemental_rate:supplement_categoryrapeseed","intercept"))
+  
+  # Create the bar plot with significance stars
+  ggplot(m3_tidy, aes(x = term, y = estimate)) +
+    geom_bar(stat = "identity",aes(fill = factor),alpha=0.7) +
+    geom_text(aes(label = significance, y = ifelse(estimate > 0, estimate + 0.001, estimate - 0.001)), 
+              vjust = ifelse(m3_tidy$estimate > 0, -0.5, 1.5), size = 5) +
+    theme_minimal() +
+    scale_x_discrete(labels = abbreviations)+ 
+    labs(x = 'animal management practice & factors',
+         y = 'Parameter estimate',
+         title = 'Meta-regression model estimation on the daily growth rate (DGR)') +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1),
+          panel.border = element_rect(color = "black", fill = NA, size = 1),  # Add black frame line
+          axis.ticks.length = unit(-0.5, "cm"),  # Minor tick marks outside
+          panel.grid = element_blank(), # Remove grid lines
+          legend.position = "none")+ # Remove legend
+    ylim(-1.2, 1.5)  # Set the y-axis limits
+
 
 # --- Analysis for KPI 2 -----
   
@@ -307,12 +343,12 @@ table(d1$kpi_type)
   # refine the model (if desired)
   # steps to do: add variables plus interactions (* for all interactions plus main factors, : for interactions only), check pvalue
   # if within a variable one subgroup is significant and others not, then adjust the groupings
-  d2[,sup_cat := fifelse(grepl('insect',supplement_category),'insect','other')]  # the forest plot showed that "insect" had a positive effect while other supplement_category showed negative effects on DGR
-  d2[,late_stage := fifelse(grepl('finishing',stage),'other',stage)]
+  #d2[,sup_cat := fifelse(grepl('insect',supplement_category),'insect','other')]  # the forest plot showed that "insect" had a positive effect while other supplement_category showed negative effects on DGR
+  #d2[,late_stage := fifelse(grepl('finishing',stage),'other',stage)]
   # Find the unique values for each variable
   sapply(lapply(d2, unique), length)
   m3.full <- metafor::rma.mv(yi,vi, 
-                             mods = ~ supplemental_rate +supplement_category+ late_stage * sup_cat,
+                             mods = ~ supplemental_rate *supplement_category,
                              data=d2,random= list(~ 1|study_ID), method="REML",sparse = TRUE)
   # analyse summary stats
   summary(m3.full)
@@ -325,7 +361,40 @@ table(d1$kpi_type)
   # assume you like to now the impact of protein source on animal type = 'pig', stage ='finishing',syp_cat='rapeseed',
   # and supplemental_rate = 50
   # predict: 50 * 0.0501 + 1 * -0.137 + 0 * -0.11 + 0* -0.260 + 0.1112 + 0 * 0.0727 - 0.0221 * 50 * 0
+   # Extract and tidy the results
+  m3_tidy <- tidy(m3.full)
   
+  # Define new column values
+  new_column_values <- c("intercept","supplemental_rate","supplemental_category","supplemental_category","supplemental_category","interaction","interaction")
+  
+  # Add new column to data frame
+  m3_tidy$factor <- new_column_values
+  
+  # Add a column for significance stars
+  m3_tidy$significance <- ifelse(m3_tidy$p.value < 0.001, "***", 
+                                 ifelse(m3_tidy$p.value < 0.01, "**", 
+                                        ifelse(m3_tidy$p.value < 0.05, "*", "")))
+  # Named vector with abbreviations
+  abbreviations <- c("supplemental_rate"="rate","supplement_categorylegumes"="legumes","supplement_categorymicroalgae"="microalgae","supplement_categoryrapeseed"="rapeseed","supplemental_rate:supplement_categorylegumes"="rate+legumes","supplemental_rate:supplement_categoryrapeseed"="rate+rapeseed","intercept"="intrcpt")
+  # Define the order of the terms
+  m3_tidy$term <- factor(m3_tidy$term, levels = c("supplemental_rate","supplement_categorylegumes","supplement_categorymicroalgae","supplement_categoryrapeseed","supplemental_rate:supplement_categorylegumes","supplemental_rate:supplement_categoryrapeseed","intercept"))
+  
+  # Create the bar plot with significance stars
+  ggplot(m3_tidy, aes(x = term, y = estimate)) +
+    geom_bar(stat = "identity",aes(fill = factor),alpha=0.7) +
+    geom_text(aes(label = significance, y = ifelse(estimate > 0, estimate + 0.001, estimate - 0.001)), 
+              vjust = ifelse(m3_tidy$estimate > 0, -0.5, 1.5), size = 5) +
+    theme_minimal() +
+    scale_x_discrete(labels = abbreviations)+ 
+    labs(x = 'animal management practice factors',
+         y = 'Parameter estimate',
+         title = 'Meta-regression model estimation on the digestability of crude protein(DCP)') +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1),
+          panel.border = element_rect(color = "black", fill = NA, size = 1),  # Add black frame line
+          axis.ticks.length = unit(-0.5, "cm"),  # Minor tick marks outside
+          panel.grid = element_blank(), # Remove grid lines
+          legend.position = "none")+ # Remove legend
+    ylim(-0.15, 0.10)  # Set the y-axis limits
   
    
 # --- Analysis for KPI 3 -----
