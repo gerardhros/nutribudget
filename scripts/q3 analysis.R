@@ -170,12 +170,12 @@ table(d1$kpi_type)
   # only a model with additive factors => use the plus sign in the mods argument
   # if you have a model with main factors AND interactions => use the "*" sign in the mods argument
   # if you have a model with ONLY interactions => use then the ":" sign
-  d2[,sup_cat := fifelse(grepl('insect',supplement_category),'insect','other')] # the forest plot showed that "insect" had a positive effect while other supplement_category showed negative effects on DGR
+  #d2[,sup_cat := fifelse(grepl('insect',supplement_category),'insect','other')] # the forest plot showed that "insect" had a positive effect while other supplement_category showed negative effects on DGR
   d2[,early_stage := fifelse(grepl('finishing|whole',stage),'other',stage)] 
   # Find the unique values for each variable
   sapply(lapply(d2, unique), length)
   m3.full <- metafor::rma.mv(yi,vi, 
-                             mods = ~ supplemental_rate + animal_type +early_stage + early_stage * sup_cat,
+                             mods = ~ supplemental_rate *supplement_category + early_stage,
                              data=d2,random= list(~ 1|study_ID), method="REML",sparse = TRUE)
   
   # analyse summary stats
@@ -186,6 +186,43 @@ table(d1$kpi_type)
   # show anova whether full model is signifiantly different from empty model
   anova(m3.full,m3.empty,refit = T)
   
+ # Extract and tidy the results
+  m3_tidy <- tidy(m3.full)
+  
+  # Define new column values
+  new_column_values <- c("intercept","supplemental_rate","supplemental_category","supplemental_category","supplemental_category","supplemental_category","supplemental_category","stage","stage","interaction","interaction","interaction","interaction","interaction")
+  
+  # Add new column to data frame
+  m3_tidy$factor <- new_column_values
+  
+  # Add a column for significance stars
+  m3_tidy$significance <- ifelse(m3_tidy$p.value < 0.001, "***", 
+                              ifelse(m3_tidy$p.value < 0.01, "**", 
+                                     ifelse(m3_tidy$p.value < 0.05, "*",
+                                            ifelse(m3_tidy$p.value < 0.1, "."))))
+  print(m3_tidy$term)
+  # Named vector with abbreviations
+  abbreviations <- c("supplemental_rate"="rate","supplement_categorygrassjuice"="grassjuice","supplement_categoryinsect"="insect","supplement_categorylegumes"="legumes","supplement_categorymicroalgae"="microalgae","supplement_categoryrapeseed"="rapeseed","early_stageother"="late_stage","early_stagestarting"="early_stage", "supplemental_rate:supplement_categorygrassjuice"="rate+grassjuice","supplemental_rate:supplement_categoryinsect"="rate+insect","supplemental_rate:supplement_categorylegumes"="rate+legumes","supplemental_rate:supplement_categorymicroalgae"="rate+microalgae","supplemental_rate:supplement_categoryrapeseed"="rate+rapeseed","intercept"="intercept")
+  # Define the order of the terms
+  m3_tidy$term <- factor(m3_tidy$term, levels = c("supplemental_rate","supplement_categorygrassjuice","supplement_categoryinsect","supplement_categorylegumes","supplement_categorymicroalgae","supplement_categoryrapeseed","early_stageother","early_stagestarting","supplemental_rate:supplement_categorygrassjuice","supplemental_rate:supplement_categoryinsect","supplemental_rate:supplement_categorylegumes","supplemental_rate:supplement_categorymicroalgae","supplemental_rate:supplement_categoryrapeseed","intercept"))
+  
+  # Create the bar plot with significance stars
+  ggplot(m3_tidy, aes(x = term, y = estimate)) +
+    geom_bar(stat = "identity",aes(fill = factor),alpha=0.7) +
+    geom_text(aes(label = significance, y = ifelse(estimate > 0, estimate + 0.001, estimate - 0.001)), 
+              vjust = ifelse(m3_tidy$estimate > 0, -0.5, 1.5), size = 5) +
+    theme_minimal() +
+    scale_x_discrete(labels = abbreviations)+ 
+    labs(x = 'animal management practice & factors',
+         y = 'Parameter estimate',
+         title = 'Meta-regression model estimation on the daily growth rate (DGR)') +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1),
+          panel.border = element_rect(color = "black", fill = NA, size = 1),  # Add black frame line
+          axis.ticks.length = unit(-0.5, "cm"),  # Minor tick marks outside
+          panel.grid = element_blank(), # Remove grid lines
+          legend.position = "none")+ # Remove legend
+    ylim(-1.2, 1.5)  # Set the y-axis limits
+
 
 # --- Analysis for KPI 2 -----
   
@@ -307,12 +344,12 @@ table(d1$kpi_type)
   # refine the model (if desired)
   # steps to do: add variables plus interactions (* for all interactions plus main factors, : for interactions only), check pvalue
   # if within a variable one subgroup is significant and others not, then adjust the groupings
-  d2[,sup_cat := fifelse(grepl('insect',supplement_category),'insect','other')]  # the forest plot showed that "insect" had a positive effect while other supplement_category showed negative effects on DGR
-  d2[,late_stage := fifelse(grepl('finishing',stage),'other',stage)]
+  #d2[,sup_cat := fifelse(grepl('insect',supplement_category),'insect','other')]  # the forest plot showed that "insect" had a positive effect while other supplement_category showed negative effects on DGR
+  #d2[,late_stage := fifelse(grepl('finishing',stage),'other',stage)]
   # Find the unique values for each variable
   sapply(lapply(d2, unique), length)
   m3.full <- metafor::rma.mv(yi,vi, 
-                             mods = ~ supplemental_rate +supplement_category+ late_stage * sup_cat,
+                             mods = ~ supplemental_rate *supplement_category+stage,
                              data=d2,random= list(~ 1|study_ID), method="REML",sparse = TRUE)
   # analyse summary stats
   summary(m3.full)
@@ -325,12 +362,46 @@ table(d1$kpi_type)
   # assume you like to now the impact of protein source on animal type = 'pig', stage ='finishing',syp_cat='rapeseed',
   # and supplemental_rate = 50
   # predict: 50 * 0.0501 + 1 * -0.137 + 0 * -0.11 + 0* -0.260 + 0.1112 + 0 * 0.0727 - 0.0221 * 50 * 0
+  # Extract and tidy the results
+  m3_tidy <- tidy(m3.full)
   
+ # Define new column values
+  new_column_values <- c("intercept","supplemental_rate","supplemental_category","supplemental_category","supplemental_category","stage","stage","interaction","interaction")
+  
+  # Add new column to data frame
+  m3_tidy$factor <- new_column_values
+  
+  # Add a column for significance stars
+  m3_tidy$significance <- ifelse(m3_tidy$p.value < 0.001, "***", 
+                                 ifelse(m3_tidy$p.value < 0.01, "**", 
+                                        ifelse(m3_tidy$p.value < 0.05, "*", 
+                                               ifelse(m3_tidy$p.value < 0.1, ".",""))))
+  # Named vector with abbreviations
+  abbreviations <- c("supplemental_rate"="rate","supplement_categorylegumes"="legumes","supplement_categorymicroalgae"="microalgae","supplement_categoryrapeseed"="rapeseed","stagegrowing"="growing","stagewhole"="whole","supplemental_rate:supplement_categorylegumes"="rate+legumes","supplemental_rate:supplement_categoryrapeseed"="rate+rapeseed","intercept"="intrcpt")
+  # Define the order of the terms
+  m3_tidy$term <- factor(m3_tidy$term, levels = c("supplemental_rate","supplement_categorylegumes","supplement_categorymicroalgae","supplement_categoryrapeseed","supplemental_rate:supplement_categorylegumes","stagegrowing","stagewhole","supplemental_rate:supplement_categoryrapeseed","intercept"))
+  
+  # Create the bar plot with significance stars
+  ggplot(m3_tidy, aes(x = term, y = estimate)) +
+    geom_bar(stat = "identity",aes(fill = factor),alpha=0.7) +
+    geom_text(aes(label = significance, y = ifelse(estimate > 0, estimate + 0.001, estimate - 0.001)), 
+              vjust = ifelse(m3_tidy$estimate > 0, -0.5, 1.5), size = 5) +
+    theme_minimal() +
+    scale_x_discrete(labels = abbreviations)+ 
+    labs(x = 'animal management practice factors',
+         y = 'Parameter estimate',
+         title = 'Meta-regression model estimation on the digestability of crude protein(DCP)') +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1),
+          panel.border = element_rect(color = "black", fill = NA, size = 1),  # Add black frame line
+          axis.ticks.length = unit(-0.5, "cm"),  # Minor tick marks outside
+          panel.grid = element_blank(), # Remove grid lines
+          legend.position = "none")+ # Remove legend
+    ylim(-0.15, 0.10)  # Set the y-axis limits
   
    
 # --- Analysis for KPI 3 -----
-  ## the code failed, as dataset is not enough to develop a meta-regression model
-  # there are quite some cases without a control. 
+  ## this KPI is excluded in D1.3, as the dataset is not enough to develop a meta-regression model
+  # there are quite some cases without control. 
   
   # subset the file
   d2 <- d1[kpi_type =='NUE']
@@ -597,7 +668,7 @@ table(d1$kpi_type)
     geom_errorbar(aes(y=var,xmin = estimate - se,xmax = estimate +se),width=0.4) + theme_bw() +
     ggtitle('effect of main factors on FCR') +
     theme(legend.position = 'bottom')+
-    scale_y_discrete(limits = c("supplemental_rate","chichen","pig", "starter", "growing","finishing","whole", "rapeseed","legumes", "insect", "grassjuice","duckweed","microalgae"))
+    scale_y_discrete(limits = c("supplemental_rate","pig", "starting", "growing","finishing","whole", "rapeseed","legumes", "insect", "grassjuice","duckweed","microalgae"))
   
   # do one meta-regression model with multiple factors
   
@@ -630,11 +701,11 @@ table(d1$kpi_type)
   # if you have a model with main factors AND interactions => use the "*" sign in the mods argument
   # if you have a model with ONLY interactions => use then the ":" sign
   #d2[,sup_cat := fifelse(grepl('rapeseed|grassjuice|insect',supplement_category),'other',supplement_category)] # the forest plot showed that the rapeseed, grassjuice and insect have a negative effect on the FCR while other supplement_catagory showed positive effect. therefore they are sub-grouped.
-  d2[,early_stage := fifelse(grepl('starter',stage),'other',stage)] 
+  #d2[,early_stage := fifelse(grepl('starter',stage),'other',stage)] 
   # Find the unique values for each variable
   sapply(lapply(d2, unique), length)
   m3.full <- metafor::rma.mv(yi,vi, 
-                             mods = ~ supplemental_rate + animal_type +early_stage + early_stage * supplement_category,
+                             mods =  ~ supplemental_rate* supplement_category + animal_type + stage * supplement_category,
                              data=d2,random= list(~ 1|study_ID), method="REML",sparse = TRUE)
   
   # analyse summary stats
@@ -642,4 +713,44 @@ table(d1$kpi_type)
   
   # collect stats of the model
   estats(m3.full,m3.empty)
+
+  # show anova whether full model is significantly different from empty model
+  anova(m3.full,m3.empty,refit = T)
+ 
+  # Extract and tidy the results
+  m3_tidy <- tidy(m3.full)
   
+  # Define new column values
+  new_column_values <- c("intercept","supplemental_rate","supplemental_category","supplemental_category","supplemental_category","supplemental_category","supplemental_category","animal_type","animal_stage","animal_stage","animal_stage","interaction","interaction","interaction","interaction","interaction","interaction","interaction")
+  
+  # Add new column to data frame
+  m3_tidy$factor <- new_column_values
+  
+  # Add a column for significance stars
+  m3_tidy$significance <- ifelse(m3_tidy$p.value < 0.001, "***", 
+                                 ifelse(m3_tidy$p.value < 0.01, "**", 
+                                        ifelse(m3_tidy$p.value < 0.05, "*",
+                                               ifelse(m3_tidy$p.value < 0.1, ".",""))))
+  
+  # Named vector with abbreviations
+  abbreviations <- c("supplemental_rate"="rate","supplement_categorygrassjuice"="grassjuice","supplement_categoryinsect"="insect","supplement_categorylegumes"="legumes","supplement_categorymicroalgae"="microalage","supplement_categoryrapeseed"="rapeseed","supplemental_rate:supplement_categorygrassjuice"="rate+grassjuice","supplemental_rate:supplement_categoryinsect"="rate+insect","supplemental_rate:supplement_categorylegumes"="rate+legumes","supplemental_rate:supplement_categorymicroalgae"="rate+microalgae","supplemental_rate:supplement_categoryrapeseed"="rate+rapeseed","supplement_categoryinsect:stagegrowing"="insect at growing stage","supplement_categorylegumes:stagegrowing"="legumes at growing stage","animal_typepig"="pig","stagegrowing"="growing","stagestarting"="starting","stagewhole"="whole","intercept"="intrcpt")
+  # Define the order of the terms
+  m3_tidy$term <- factor(m3_tidy$term, levels = c("supplemental_rate","supplement_categorygrassjuice","supplement_categoryinsect","supplement_categorylegumes","supplement_categorymicroalgae","supplement_categoryrapeseed","supplemental_rate:supplement_categorygrassjuice","supplemental_rate:supplement_categoryinsect","supplemental_rate:supplement_categorylegumes","supplemental_rate:supplement_categorymicroalgae","supplemental_rate:supplement_categoryrapeseed","supplement_categoryinsect:stagegrowing","supplement_categorylegumes:stagegrowing","animal_typepig","stagegrowing","stagestarting","stagewhole","intercept"))
+  
+  # Create the bar plot with significance stars
+  ggplot(m3_tidy, aes(x = term, y = estimate)) +
+    geom_bar(stat = "identity",aes(fill = factor),alpha=0.7) +
+    geom_text(aes(label = significance, y = ifelse(estimate > 0, estimate + 0.005, estimate - 0.005)), 
+              vjust = ifelse(m3_tidy$estimate > 0, -0.5, 1.5), size = 3) +
+    theme_minimal() +
+    scale_x_discrete(labels = abbreviations)+ 
+    labs(x = 'animal management practice & factors',
+         y = 'Parameter estimate',
+         title = 'Meta-regression model estimation on the feed conversion ratio (FCR)') +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1),
+          panel.border = element_rect(color = "black", fill = NA, size = 1),  # Add black frame line
+          axis.ticks.length = unit(-0.5, "cm"),  # Minor tick marks outside
+          panel.grid = element_blank(), # Remove grid lines
+          legend.position = "none") + # Remove legend
+    ylim(-2, 2) # Set the y-axis limits with a bit more space
+

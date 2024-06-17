@@ -45,7 +45,8 @@ ggplot(d1,aes(x= end_product_type,y=kpi_mean,fill=experiment_scale)) +
   scale_x_discrete(limits = c("solid_fraction","liquid_fraction","microalgae","struvite","permeate","concentrate","ammonium_salts","ammonium_sulphate","ammonium_nitrate")) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ 
   theme(axis.line = element_line(color='black'),plot.background = element_blank(),panel.grid.minor = element_blank(),panel.grid.major = element_blank())
-# subset the file for kpis
+
+## regression model for the recovery rate of TN
 d2 <- d1[kpi_code =='TN']
 #remove the missing values
 #d2<-na.omit(d2$kpi_mean)
@@ -89,6 +90,90 @@ m1 <- lm(kpi_mean ~ end_product_type * experiment_scale, data = d2)
 cat("\nSummary of the linear model:\n")
 print(summary(m1))
 
+## Regression model for the recovery rate of TAN
+d2 <- d1[kpi_code =='TAN']
+
+# Check unique values for experiment_scale
+cat("\nUnique values in experiment_scale before conversion:\n")
+print(unique(d2$experiment_scale))
+
+# Convert columns to factors with specified levels
+d2 <- d2 %>%
+  mutate(
+    end_product_type = as.factor(end_product_type),
+    experiment_scale = factor(experiment_scale, levels = c("full_scale", "farm", "pilot", "batch", "laboratory"))
+  )
+
+# Check the unique values after conversion
+cat("\nUnique values in experiment_scale after conversion:\n")
+print(unique(d2$experiment_scale))
+
+# Check for levels that are not present in the data
+cat("\nLevels in experiment_scale:\n")
+print(levels(d2$experiment_scale))
+
+# Drop unused levels
+d2 <- droplevels(d2)
+
+# Verify the data after dropping unused levels
+cat("\nSummary of d2 after dropping unused levels:\n")
+print(summary(d2))
+
+# Check if experiment_scale still has fewer than two levels
+if (length(unique(d2$experiment_scale)) < 2) {
+  stop("experiment_scale must have at least two levels")
+}
+
+# Fit the linear model again
+m1 <- lm(kpi_mean ~ end_product_type * experiment_scale, data = d2)
+cat("\nSummary of the linear model:\n")
+print(summary(m1))
+
+## Regression model for the recovery rate of TP
+d2 <- d1[kpi_code =='TP']
+
+# Check unique values for experiment_scale
+cat("\nUnique values in experiment_scale before conversion:\n")
+print(unique(d2$experiment_scale))
+
+# Convert columns to factors with specified levels
+d2 <- d2 %>%
+  mutate(
+    end_product_type = as.factor(end_product_type),
+    experiment_scale = factor(experiment_scale, levels = c("full_scale", "farm", "pilot", "batch", "laboratory"))
+  )
+
+# Check the unique values after conversion
+cat("\nUnique values in experiment_scale after conversion:\n")
+print(unique(d2$experiment_scale))
+
+# Check for levels that are not present in the data
+cat("\nLevels in experiment_scale:\n")
+print(levels(d2$experiment_scale))
+
+# Drop unused levels
+d2 <- droplevels(d2)
+
+# Verify the data after dropping unused levels
+cat("\nSummary of d2 after dropping unused levels:\n")
+print(summary(d2))
+
+# Check if experiment_scale still has fewer than two levels
+if (length(unique(d2$experiment_scale)) < 2) {
+  stop("experiment_scale must have at least two levels")
+}
+
+# Fit the linear model again
+m1 <- lm(kpi_mean ~ end_product_type * experiment_scale, data = d2)
+cat("\nSummary of the linear model:\n")
+print(summary(m1))
+
+
+
+
+
+
+
 # subset the file for MTREAT
 d1 <- data[man_code =='MTREAT']
 # boxplot for the end products
@@ -108,24 +193,27 @@ ggplot(d1,aes(x= man_treatment,y=kpi_mean,fill=experiment_scale)) +
 
 library(dplyr)
 
+# subset the file for removal rate of TN
+d2 <- d1[kpi_code =='TN']
+
 # Check unique values for animal control
-cat("\nUnique values in animal control before conversion:\n")
-print(unique(d2$animal_control))
+cat("\nUnique values in man_treatment before conversion:\n")
+print(unique(d2$man_treatment))
 
 # Convert columns to factors with specified levels
 d2 <- d2 %>%
   mutate(
     end_product_type = as.factor(end_product_type),
-    animal_control = factor(animal_control, levels = c("mix","pig","poultry","cattle","dairy"))
+    animal_control = factor(man_treatment, levels = c("struvite precipitation","stripping and scrubbing", "centrifugation","ammonia scrubbing","screw press","ultrafiltration","microfiltration","reverse osmosis","microalgae"))
   )
 
 # Check the unique values after conversion
-cat("\nUnique values in animal_control after conversion:\n")
-print(unique(d2$animal_control))
+cat("\nUnique values in man_treatment after conversion:\n")
+print(unique(d2$man_treatment))
 
 # Check for levels that are not present in the data
-cat("\nLevels in animal_control:\n")
-print(levels(d2$animal_control))
+cat("\nLevels in man_treatment:\n")
+print(levels(d2$man_treatment))
 
 # Drop unused levels
 d2 <- droplevels(d2)
@@ -135,11 +223,130 @@ cat("\nSummary of d2 after dropping unused levels:\n")
 print(summary(d2))
 
 # Check if experiment_scale still has fewer than two levels
-if (length(unique(d2$animal_control)) < 2) {
+if (length(unique(d2$experiment_scale)) < 2) {
   stop("experiment_scale must have at least two levels")
 }
 
 # Fit the linear model again
-m1 <- lm(kpi_mean ~ experiment_scale * animal_control, data = d2)
+m1 <- lm(kpi_mean ~ experiment_scale * man_treatment, data = d2)
+cat("\nSummary of the linear model:\n")
+print(summary(m1))
+
+
+## subset the file for removal rate of TAN
+d2 <- d1[kpi_code =='TAN']
+
+# Check unique values for animal control
+cat("\nUnique values in man_treatment before conversion:\n")
+print(unique(d2$man_treatment))
+
+# Convert columns to factors with specified levels
+d2 <- d2 %>%
+  mutate(
+    end_product_type = as.factor(end_product_type),
+    animal_control = factor(man_treatment, levels = c("struvite precipitation","stripping and scrubbing", "centrifugation","ammonia scrubbing","screw press","ultrafiltration","microfiltration","reverse osmosis","microalgae"))
+  )
+
+# Check the unique values after conversion
+cat("\nUnique values in man_treatment after conversion:\n")
+print(unique(d2$man_treatment))
+
+# Check for levels that are not present in the data
+cat("\nLevels in man_treatment:\n")
+print(levels(d2$man_treatment))
+
+# Drop unused levels
+d2 <- droplevels(d2)
+
+# Verify the data after dropping unused levels
+cat("\nSummary of d2 after dropping unused levels:\n")
+print(summary(d2))
+
+# Check if experiment_scale still has fewer than two levels
+if (length(unique(d2$experiment_scale)) < 2) {
+  stop("experiment_scale must have at least two levels")
+}
+
+# Fit the linear model again
+m1 <- lm(kpi_mean ~ experiment_scale * man_treatment, data = d2)
+cat("\nSummary of the linear model:\n")
+print(summary(m1))
+
+## subset the file for removal rate of NH3
+d2 <- d1[kpi_code =='NH3']
+
+# Check unique values for animal control
+cat("\nUnique values in man_treatment before conversion:\n")
+print(unique(d2$man_treatment))
+
+# Convert columns to factors with specified levels
+d2 <- d2 %>%
+  mutate(
+    end_product_type = as.factor(end_product_type),
+    animal_control = factor(man_treatment, levels = c("struvite precipitation","stripping and scrubbing", "centrifugation","ammonia scrubbing","screw press","ultrafiltration","microfiltration","reverse osmosis","microalgae"))
+  )
+
+# Check the unique values after conversion
+cat("\nUnique values in man_treatment after conversion:\n")
+print(unique(d2$man_treatment))
+
+# Check for levels that are not present in the data
+cat("\nLevels in man_treatment:\n")
+print(levels(d2$man_treatment))
+
+# Drop unused levels
+d2 <- droplevels(d2)
+
+# Verify the data after dropping unused levels
+cat("\nSummary of d2 after dropping unused levels:\n")
+print(summary(d2))
+
+# Check if experiment_scale still has fewer than two levels
+if (length(unique(d2$experiment_scale)) < 2) {
+  stop("experiment_scale must have at least two levels")
+}
+
+# Fit the linear model again
+m1 <- lm(kpi_mean ~ experiment_scale * man_treatment, data = d2)
+cat("\nSummary of the linear model:\n")
+print(summary(m1))
+
+
+## subset the file for removal rate of TP
+d2 <- d1[kpi_code =='TP']
+
+# Check unique values for animal control
+cat("\nUnique values in man_treatment before conversion:\n")
+print(unique(d2$man_treatment))
+
+# Convert columns to factors with specified levels
+d2 <- d2 %>%
+  mutate(
+    end_product_type = as.factor(end_product_type),
+    animal_control = factor(man_treatment, levels = c("struvite precipitation","stripping and scrubbing", "centrifugation","ammonia scrubbing","screw press","ultrafiltration","microfiltration","reverse osmosis","microalgae"))
+  )
+
+# Check the unique values after conversion
+cat("\nUnique values in man_treatment after conversion:\n")
+print(unique(d2$man_treatment))
+
+# Check for levels that are not present in the data
+cat("\nLevels in man_treatment:\n")
+print(levels(d2$man_treatment))
+
+# Drop unused levels
+d2 <- droplevels(d2)
+
+# Verify the data after dropping unused levels
+cat("\nSummary of d2 after dropping unused levels:\n")
+print(summary(d2))
+
+# Check if experiment_scale still has fewer than two levels
+if (length(unique(d2$experiment_scale)) < 2) {
+  stop("experiment_scale must have at least two levels")
+}
+
+# Fit the linear model again
+m1 <- lm(kpi_mean ~ experiment_scale * man_treatment, data = d2)
 cat("\nSummary of the linear model:\n")
 print(summary(m1))
