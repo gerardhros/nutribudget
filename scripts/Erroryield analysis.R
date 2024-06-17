@@ -9,9 +9,9 @@ require(metafor)
 require(ggplot2)
 
 # read in the database (NOTE that I updated some SE and SD values)
-d1a <- as.data.table(read_xlsx('C:/Users/anton040/OneDrive - Wageningen University & Research/PHD/Nutribudget/Task 1.2 Template/Final Excel for Crop yields/Finalyield_database.xlsx',sheet = 1))
-d1b <- as.data.table(read_xlsx('C:/Users/anton040/OneDrive - Wageningen University & Research/PHD/Nutribudget/Task 1.2 Template/Final Excel for Crop yields/Finalyield_database.xlsx',sheet = 2))
-d1c <- as.data.table(read_xlsx('C:/Users/anton040/OneDrive - Wageningen University & Research/PHD/Nutribudget/Task 1.2 Template/Final Excel for Crop yields/Finalyield_database.xlsx',sheet = 3))
+d1a <- as.data.table(read_xlsx('data/Finalyield_database.xlsx',sheet = 1))
+d1b <- as.data.table(read_xlsx('data/Finalyield_database.xlsx',sheet = 2))
+d1c <- as.data.table(read_xlsx('data/Finalyield_database.xlsx',sheet = 3))
 
 # combine the three sheets
 d1 <- rbind(d1a,d1b,d1c)
@@ -33,7 +33,7 @@ setnames(d1,
   } else {
     
     # after collection site properties, read these covariates in
-    d1.cov <- fread('C:/Users/anton040/OneDrive - Wageningen University & Research/PHD/Nutribudget/Task 1.2 Template/Final Excel for Crop yields/240523_covariates_yield.csv')
+    d1.cov <- fread('products/240523_covariates_yield.csv')
   }
   
   # combine both
@@ -188,6 +188,8 @@ setnames(d1,
   # STARTING OF ERROR CONVERGENCE = 1 given the huge changes and deline with a factor 3 is unlikely
   d2 <- d2[abs(yi) <= 2]
 
+  d2 <- d2[kpi_treat_sd>1 & kpi_contr_sd > 1]
+  
   # estimate mean response across all studies
 m1 <- metafor::rma.mv(yi,vi, 
                         data=d2,
