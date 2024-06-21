@@ -7,6 +7,9 @@ require(readxl)
 require(data.table)
 require(metafor)
 require(ggplot2)
+require(broom)
+require(dplyr)
+require(sf)
 
 # read in the database (NOTE that I updated some SE and SD values)
 d1a <- as.data.table(read_xlsx('C:/Users/anton040/OneDrive - Wageningen University & Research/PHD/Nutribudget/Task 1.2 Template/Final Excel for Crop yields/Finalyield_database.xlsx',sheet = 1))
@@ -140,21 +143,19 @@ setnames(d1,
   d1[is.na(replication), replication := 2]
   
 # make plot sampling location
-  
-  require(sf)
-
-  # load in the base map
+# load in the base map
   world <- map_data("world")
   ggplot() +
     geom_map(
       data = world, map = world,
       aes(long, lat, map_id = region),
       color = "#999999", fill = "#CCCCCC", linewidth = 0.1) +
-    geom_point(data = d1.cov,aes(lon, lat), alpha = 1, size = 2,color='black') +
+    geom_point(data = d1.cov,aes(lon, lat), alpha = 1, size = 2,shape =21, fill = 'green', color='black') +
     theme_bw()+
     ylim(30,70)+
     xlim(-20,40)+
     coord_sf(crs=4326)
+   
   
 # --- Analysis for KPI crop yield -----
 
@@ -176,14 +177,18 @@ setnames(d1,
   d2[, id := frankv(yi,order = -1)]
 
   # make first plot of individual observations
-  ggplot(data = d2,aes(x = id,y = yi)) + 
+  ggplot(data = d2,aes(x = id,y = yi, color=id)) + 
+    scale_color_gradient(low="red", high="green") +   # Sequential color scheme
     geom_point() + 
     geom_line() +
     geom_errorbar(aes(x = id,ymin = yi-vi,ymax = yi + vi)) +
     theme_bw() + xlab('study id') + ylab('lnRR, change in crop yield') + 
     ggtitle('Observed changes in crop yield 
             due to crop, soil and 
-            fertilisation practices')
+            fertilisation practices') +
+    theme(plot.title = element_text(size = rel(0.8)),
+          axis.title.x = element_text(size = rel(0.8)),  # Adjust x-axis label size
+          axis.title.y = element_text(size = rel(0.8)))
   
   d2 <- d2[abs(yi) <= 2]
 
@@ -203,7 +208,7 @@ fcols <- c('crop_type','crop_residue','cover_crop','crop_rotation', 'tillage',
            'nutri_dose_N','nutri_dose_P','nutri_dose_K','nutri_dose_Mg',
            'bdod_mean_0_5','cec_mean_0_5','clay_mean_0_5','ntot_mean_0_5',
            'phw_mean_0_5','soc_mean_0_5',
-           'tmp_mean','pet_mean','tmp_sd','pet_sd',
+           'tmp_mean','pet_mean','tmp_sd','pet_sd','pre_mean','pre_sd',
            'ctype')
 
 # make an empty list to store output
@@ -258,31 +263,30 @@ out.dgr <- rbindlist(out.dgr)
 
 # remove cropname (too mucht options, use only grouped one)
 out.dgr <- out.dgr[factor != 'crop_type']
-# make barplot (figure formatting: need to be done)
-#out.dgr[, pfactor := as.factor(factor)]
-#ggplot(data=out.dgr[var!='intercept']) +
-  #geom_bar(aes(x=estimate,y= var),stat="identity") + 
-  #geom_errorbar(aes(y=var,xmin = estimate - se,xmax = estimate +se),width=0.4) + theme_bw() +
-  #ggtitle('Effect of main factors on Crop yield') +
-  #theme(legend.position = 'bottom')
 
-#Create a barplot for the management practices and their estimates
-library(dplyr)
-
+##Create a barplot for the management practices and their estimates
 # Filter the data
 
 filtered_data <- out.dgr %>%
   filter(factor == 'man_code' & !grepl('intercept|intrcpt', var))
 
+# Add asterisks for significance
+filtered_data <- filtered_data %>%
+  mutate(significance = case_when(
+    pval < 0.001 ~ "***",
+    pval < 0.01 ~ "**",
+    pval < 0.05 ~ "*",
+    TRUE ~ ""
+  ))
+practice_order <- filtered_data$var
 # Plot the filtered data of management practices
 ggplot(data = filtered_data) +
-  geom_bar(aes(x = estimate, y = var), stat = "identity") + 
+  geom_bar(aes(x = estimate, y = var), stat = "identity", color='darkblue', fill = 'darkblue') + 
   geom_errorbar(aes(y = var, xmin = estimate - se, xmax = estimate + se), width = 0.4) + 
   theme_bw() +
   ggtitle('Effect of management practices 
-          on Crop yield') +
+          on crop yield') + 
   theme(
-    legend.position = 'bottom',
     plot.title = element_text(size = 10, hjust = 0),  # Adjust title size and align to left
     axis.title.x = element_text(size = 12),         # Adjust x-axis title size
     axis.title.y = element_text(size = 12),         # Adjust y-axis title size
@@ -325,7 +329,7 @@ ggplot(data = filtered_data) +
 # Filter the data
   filtered_data <- out.dgr %>%
   filter(factor %in% c('ph','bdod_mean_0_5', 'cec_mean_0_5','clay_mean_0_5',
-                       'ntot_mean_0_5','soc_mean_0_5', 'phw_mean_0_5', 'tmp_mean','pet_mean') & !grepl('intercept|intrcpt', var))
+                       'ntot_mean_0_5','soc_mean_0_5', 'phw_mean_0_5', 'tmp_mean','pre_mean') & !grepl('intercept|intrcpt', var))
 
 
 # Add asterisks for significance
@@ -350,14 +354,14 @@ ggplot(data = filtered_data) +
     plot.title = element_text(size = 10, hjust = 0),  # Adjust title size and align to left
     axis.title.x = element_text(size = 12),           # Adjust x-axis title size
     axis.title.y = element_text(size = 12),           # Adjust y-axis title size
-    axis.text.x = element_text(size = 8),             # Adjust x-axis text size
+    axis.text.x = element_text(size = 10),             # Adjust x-axis text size
     axis.text.y = element_text(size = 6, margin = margin(t = 20, b = 10))  # Adjust y-axis text size
   )
 
 ##Barplot for crop type
 # Filter the data
 filtered_data <- out.dgr %>%
-  filter(factor == 'ctype' & !grepl('intercept|intrcpt', var))
+filter(factor == 'ctype' & !grepl('intercept|intrcpt', var))
 
 # Add asterisks for significance
 filtered_data <- filtered_data %>%
@@ -385,47 +389,45 @@ ggplot(data = filtered_data) +
     axis.text.y = element_text(size = 6, margin = margin(t = 20, b = 10))  # Adjust y-axis text size
   )
 
-# do one meta-regression model with multiple factors
+## do one meta-regression model with multiple factors
 
 # make a function to extract relevant model statistics
 estats <- function(model_new,model_base){
-  out <- data.table(AIC = model_new$fit.stats[4,2],
-                    ll = model_new$fit.stats[1,2],
-                    ll_impr = round(100 * (1-model_new$fit.stats[1,2]/model_base$fit.stats[1,2]),2),
-                    r2_impr = round(100*max(0,(sum(model_base$sigma2)-sum(model_new$sigma2))/sum(model_base$sigma2)),2),
-                    pval = round(anova(model_new,model_base)$pval,3))
-  return(out)
+out <- data.table(AIC = model_new$fit.stats[4,2],
+ll = model_new$fit.stats[1,2],
+ll_impr = round(100 * (1-model_new$fit.stats[1,2]/model_base$fit.stats[1,2]),2),
+r2_impr = round(100*max(0,(sum(model_base$sigma2)-sum(model_new$sigma2))/sum(model_base$sigma2)),2),
+pval = round(anova(model_new,model_base)$pval,3))
+return(out)
 }
 
-# make first an empty model
+## make first an empty model
 m3.empty <- metafor::rma.mv(yi,vi, data=d2,random= list(~ 1|study_ID), method="REML",sparse = TRUE)
-#make the different practice groups
-combination_practices <- c("CC + M","CC + MCR + RR", "CC + MCR + RR + CT", "CC + MCR + RR + RT", "CT + CC + M", "RT + NF", "FT + NF","IR + FT","RR + RT","IMP + NF","MCR + NF", "DD + ML", data = d2)
-tillage_practices <- c("NT", "ST", "RT", data = d2)
-fertilisation_practices <- c("DF", "NF", "MF", data = d2)
-irrigation_practices <- c("IR", data = d2)
-mulching_practices <- "ML"
-residue_practices <- c("RR", data = d2)
-biochar_practices <- c("IMP", data = d2)
-crop_practices <- c("CC", "INC", "MCR", data = d2)
-drilling_practices <- c("DD", data = d2)
+##make the different practice groups
+combination_practices <- c("CC + M","CC + MCR + RR", "CC + MCR + RR + CT", "CC + MCR + RR + RT", "CT + CC + M", "RT + NF", "FT + NF","IR + FT","RR + RT","IMP + NF","MCR + NF", "DD + ML")
+tillage_practices <- c("NT", "ST", "RT")
+fertilisation_practices <- c("DF", "NF", "MF", "OF")
+irrigation_practices <- c("IR")
+mulching_practices <- c("ML")
+residue_practices <- c("RR")
+biochar_practices <- c("IMP")
+crop_practices <- c("CC", "INC", "MCR")
+drilling_practices <- c("DD")
 
 #create new variable indicating the groups
-d2$man_code_new <- ifelse(d2$man_code %in% combination_practices, "Combination practices", 
-                          ifelse(d2$man_code %in% tillage_practices, "Tillage Practices", 
-                                 ifelse(d2$man_code %in% fertilisation_practices, "Fertilisation practices",
-                                        ifelse(d2$man_code %in% irrigation_practices, "Irrigation practices",
-                                               
-                                                      ifelse(d2$man_code %in% residue_practices, "Residue practices",
-                                                             ifelse(d2$man_code %in% biochar_practices, "Biochar practices",
-                                                                    ifelse(d2$man_code %in% crop_practices, "Crop practices",
-                                                                           ifelse(d2$man_code %in% drilling_practices, "Drilling practices", "Other"))))))))
+d2$man_code_new <- ifelse(d2$man_code %in% combination_practices, "Combination practices", ifelse(d2$man_code %in% tillage_practices, "Tillage Practices", 
+ifelse(d2$man_code %in% irrigation_practices, "Irrigation practices",
+ifelse(d2$man_code %in% residue_practices, "Residue practices",
+ifelse(d2$man_code %in% biochar_practices, "Biochar practices",
+ifelse(d2$man_code %in% crop_practices, "Crop practices",
+ifelse(d2$man_code %in% mulching_practices, "Mulching practices",
+ifelse(d2$man_code %in% drilling_practices, "Drilling practices", 
+       "Other" ))))))))
 
 # Print the updated data to verify the new column
 print(d2)
 
 # Function to standardize numeric columns
-library(dplyr)
 standardize <- function(x) {
   return ((x - mean(x)) / sd(x))
 }
@@ -436,12 +438,14 @@ d2_standardized <- d2 %>%
 # Display the standardized data frame
 print(d2_standardized)
 
+# a non linear response of crop yield fue to n dose
+n_dose <- (d2$nutri_dose_N)^2
+
 # Fit the model using the new grouping variable
 m3.full <- rma.mv(yi, vi, 
-                  mods = ~ man_code_new + ctype + crop_residue + cover_crop + crop_rotation + 
-                    tillage + fertilizer_type + nutri_dose_N + nutri_dose_P + nutri_dose_K +
-                    nutri_dose_Mg + ntot_mean_0_5 +
-                    ph + tmp_mean + pet_mean,
+                  mods = ~ man_code_new + ctype + crop_residue + cover_crop + crop_rotation + tillage + fertilizer_type + n_dose + nutri_dose_P + nutri_dose_K +
+nutri_dose_Mg + ntot_mean_0_5 +
+ph + tmp_mean + pre_mean + pet_mean +  soc_mean_0_5 + clay_mean_0_5 + bdod_mean_0_5 + cec_mean_0_5 + phw_mean_0_5,
                   data = d2, 
                   random = list(~ 1 | study_ID), 
                   method = "REML", 
@@ -449,27 +453,127 @@ m3.full <- rma.mv(yi, vi,
 # analyse summary stats
 summary(m3.full)
 
+##Barplot of practices & site properties for the full model
+# Extract and tidy the results
+m3_tidy <- broom::tidy(m3.full)
 
-#different grouping and final refined model
+# Define new column values
+new_column_values <- c("intrcpt","man_code_newCombination practices","man_code_newCrop practices", "man_code_newDrilling practices", "man_code_newFertilisation practices",
+"man_code_newIrrigation practices","man_code_newMulching practices",
+"man_code_newResidue practices","man_code_newTillage Practices",
+"ctypebeans_oilcrop","ctypecereal","ctypemaize","ctypeother",
+"ctyperice","ctypevegetable","crop_residueunknown", "crop_residueyes", 
+"cover_cropunknown", "cover_cropyes", "crop_rotationunknown", 
+"crop_rotationyes", "tillageNT", "tillageRT", "fertilizer_typeinorganic ",
+"fertilizer_typeorganic", "fertilizer_typeunknown","n_dose", 
+"nutri_dose_P", "nutri_dose_K", "nutri_dose_Mg", "ntot_mean_0_5", 
+"ph", "tmp_mean", "pre_mean", "pet_mean", "soc_mean_0_5", "clay_mean_0_5", 
+"bdod_mean_0_5", "cec_mean_0_5", "phw_mean_0_5")
+# Rename factor levels using recode with named arguments
+m3_tidy <- m3_tidy %>%
+  mutate(factor = recode(term,
+                         `man_code_newCombination practices` = "Combination",
+                         `man_code_newCrop practices` = "Crop",
+                         `man_code_newDrilling practices` = "Drilling",
+                         `man_code_newFertilisation practices` = "Fertilisation",
+                         `man_code_newIrrigation practices` = "Irrigation",
+                         `man_code_newMulching practices` = "Mulching",
+                         `man_code_newResidue practices` = "Residue",
+                         `man_code_newTillage Practices` = "Tillage",
+                         `ctypebeans_oilcrop` = "Beans & oilcrop",
+                         `ctypecereal` = "Cereals",
+                         `ctypemaize` = "Maize",
+                         `ctypeother` = "Other",
+                         `ctyperice` = "Rice",
+                         `ctypevegetable` = "Vegetables",
+                         `crop_residueunknown` = "Crop residue (U)", 
+                         `crop_residueyes` = "Crop residue",
+                         `cover_cropunknown` = "Cover crop (U)",
+                         `cover_cropyes` = "Cover crop", 
+                         `crop_rotationunknown` = "Crop rotation (U)",
+                         `crop_rotationyes` = "Crop rotation", 
+                         `tillageNT` = "No tillage", 
+                         `tillageRT` = "Reduced tillage", 
+                         `fertilizer_typeinorganic ` = "Inorganic fertiliser",
+                         `fertilizer_typeorganic` = "Organic fertiliser",
+                         `fertilizer_typeunknown` = "Fertiliser (U)",
+                         `n_dose` = "N dose",
+                         `nutri_dose_P` = "P dose", 
+                         `nutri_dose_K` = "K dose", 
+                         `nutri_dose_Mg` = "Mg dose", 
+                         `ntot_mean_0_5` = "Total nitrogen", 
+                         `tmp_mean` = "Temp", 
+                         `pre_mean` = "Precipitation",
+                         `pet_mean` = "Evaporotrasportation",
+                         `soc_mean_0_5`  = "Soil organic C", 
+                         `clay_mean_0_5` = "Clay",
+                         `bdod_mean_0_5` = "Bulk density", 
+                         `cec_mean_0_5` = "Cation exchange capacity", 
+                         `phw_mean_0_5` = "pH Water"))
+
+# Add a column for significance stars
+m3_tidy$significance <- ifelse(m3_tidy$p.value < 0.001, "***", 
+ifelse(m3_tidy$p.value < 0.01, "**", 
+ifelse(m3_tidy$p.value < 0.05, "*", 
+ifelse(m3_tidy$p.value < 0.1, ".", ""))))
+
+# Define the order of the terms
+m3_tidy$factor <- factor(m3_tidy$factor, levels = unique(m3_tidy$factor))
+
+# Split data into management practices and site properties
+management_practices <- m3_tidy[m3_tidy$factor %in% c("Intrecept","Combination", "Crop", "Drilling", "Fertilisation","Irrigation", "Mulching", "Residue", "Tillage"), ]
+
+site_properties <- m3_tidy[!m3_tidy$factor %in% c("Intrecept", "Combination", "Crop", "Drilling", "Fertilisation", "Irrigation","Mulching", "Residue", "Tillage"), ]
+
+# Plot for management practices
+ggplot(management_practices, aes(x = factor, y = estimate)) + 
+  geom_bar(stat = "identity", aes(fill = factor), alpha = 0.7) + 
+  geom_text(aes(label = significance, y = ifelse(estimate > 0, estimate + 0.001, estimate - 0.001)), 
+            vjust = ifelse(management_practices$estimate > 0, -0.5, 1.5), size = 3.5) + 
+  theme_minimal() + 
+  labs(x = 'Crop, soil and fertilisation practices', y = 'Parameter estimate', 
+       title = 'Meta-regression model estimation on crop yield') + 
+  theme(axis.text.x = element_text(angle = 60, hjust = 1), 
+        panel.border = element_rect(color = "black", fill = NA, size = 1), 
+        axis.ticks.length = unit(-0.5, "cm"), 
+        panel.grid = element_blank(), 
+        legend.position = "none") + 
+  ylim(-0.8, 0.8)
+
+# Plot for site properties
+ggplot(site_properties, aes(x = factor, y = estimate)) + 
+  geom_bar(stat = "identity", aes(fill = "black"), alpha = 0.7) + 
+  geom_text(aes(label = significance, y = ifelse(estimate > 0, estimate + 0.001, estimate - 0.001)), 
+            vjust = ifelse(site_properties$estimate > 0, -0.5, 1.5), size = 3) + 
+  theme_minimal() + 
+  labs(x = 'Site properties', y = 'Parameter estimate', 
+       title = 'Meta-regression model estimation on crop yield') + 
+  theme(axis.text.x = element_text(angle = 60, hjust = 1, size = 7.6), 
+        panel.border = element_rect(color = "black", fill = NA, size = 1), 
+        axis.ticks.length = unit(-0.5, "cm"), 
+        panel.grid = element_blank(), 
+        legend.position = "none") + 
+  ylim(-0.48, 1.1)
+
+##different grouping and final refined model
 #make the different practice groups
-combination_practices <- c("CC + MCR + RR", "CC + M", "CC + MCR + RR + CT", "CC + MCR + RR + RT", "CT + CC + M", "RT + NF", "FT + NF","IR + FT","RR + RT","IMP + NF","MCR + NF", "DD + ML", data = d2)
-soil_practices <- c("NT", "ST", "RT","ML", "IMP","RR","DD", data = d2)
-fertilisation_practices <- c("DF", "NF", "MF", data = d2)
-irrigation_practices <- c("IR", data = d2)
-crop_practices <- c("CC", "INC", "MCR", data = d2)
+combination_practices1 <- c("CC + MCR + RR", "CC + M", "CC + MCR + RR + CT", "CC + MCR + RR + RT", "CT + CC + M", "RT + NF", "FT + NF","IR + FT","RR + RT","IMP + NF","MCR + NF", "DD + ML")
+soil_practices1 <- c("NT", "ST", "RT","ML", "IMP","RR","DD")
+fertilisation_practices1 <- c("DF", "NF", "MF", "OF")
+irrigation_practices1 <- c("IR")
+crop_practices1 <- c("CC", "INC", "MCR")
 
 
-#create new variable indicating the groups
-d2$man_code_new2 <- ifelse(d2$man_code %in% combination_practices, "Combination practices", 
-                          ifelse(d2$man_code %in% soil_practices, "Soil Practices", 
-                                 ifelse(d2$man_code %in% fertilisation_practices, "Fertilisation practices",
-                                        ifelse(d2$man_code %in% irrigation_practices, "Irrigation practices", "Other"))))
+#create new variable indicating the groups, here the other practices are the crop practices
+d2$man_code_new2 <- ifelse(d2$man_code %in% combination_practices1, "Combination practices",ifelse(d2$man_code %in% soil_practices1, "Soil Practices",
+ifelse(d2$man_code %in% fertilisation_practices1, "Fertilisation practices",
+ifelse(d2$man_code %in% crop_practices1, "Crop practices",
+ifelse(d2$man_code %in% irrigation_practices1, "Irrigation practices", "Other")))))
 
 # Print the updated data to verify the new column
 print(d2)
 
 # Function to standardize numeric columns
-library(dplyr)
 standardize <- function(x) {
   return ((x - mean(x)) / sd(x))
 }
@@ -480,11 +584,11 @@ d2_standardized <- d2 %>%
 # Display the standardized data frame
 print(d2_standardized)
 
+# Include additive values  between management practices and site properties
 m3.full1 <- rma.mv(yi, vi, 
                   mods = ~ man_code_new2 + ctype + cover_crop + crop_rotation + 
-                   nutri_dose_N + nutri_dose_K +
-                     +ntot_mean_0_5 +
-                    ph + tmp_mean + pet_mean,
+                    + clay_mean_0_5 + bdod_mean_0_5 + cec_mean_0_5 + phw_mean_0_5 
+                     + ntot_mean_0_5 + ph + pre_mean,
                   data = d2, 
                   random = list(~ 1 | study_ID), 
                   method = "REML", 
@@ -493,21 +597,199 @@ m3.full1 <- rma.mv(yi, vi,
 # analyse summary stats
 summary(m3.full1)
 
+##Barplot of practices & site properties for the refined model
+# Extract and tidy the results
+m3_tidy <- broom::tidy(m3.full1)
 
-# I DO NOT UNDERSTAND THIS PART refine the model (if desired)
-# steps to do: add variables plus interactions (* for all interactions plus main factors, : for interactions only), check pvalue
-# if within a variable one subgroup is significant and others not, then adjust the groupings
-# so, you have the options:
-# only a model with additive factors => use the plus sign in the mods argument
-# if you have a model with main factors AND interactions => use the "*" sign in the mods argument
-# if you have a model with ONLY interactions => use then the ":" sign
-#d2[,sup_cat := fifelse(grepl('micro',crop_type),'x','other')]
-#m3.full <- metafor::rma.mv(yi,vi, 
- #                          mods = ~ supplemental_rate + stage : sup_cat,
- #                          data=d2,random= list(~ 1|study_ID), method="REML",sparse = TRUE)
+# Rename terms to more readable names
+m3_tidy <- m3_tidy %>%
+  mutate(factor = recode(term,
+                         `(Intercept)` = "Intercept",
+                         `man_code_new2Combination practices` = "Combination",
+                         `man_code_new2Crop practices` = "Crop",
+                         `man_code_new2Fertilisation practices` = "Fertilisation",
+                         `man_code_new2Irrigation practices` = "Irrigation",
+                         `man_code_new2Soil Practices` = "Soil",
+                         `ctypebeans_oilcrop` = "Beans & oilcrop",
+                         `ctypecereal` = "Cereals",
+                         `ctypemaize` = "Maize",
+                         `ctypeother` = "Other",
+                         `ctyperice` = "Rice",
+                         `ctypevegetable` = "Vegetables",
+                         `cover_cropunknown` = "Cover crop (U)",
+                         `cover_cropyes` = "Cover crop",
+                         `crop_rotationunknown` = "Crop rotation (U)",
+                         `crop_rotationyes` = "Crop rotation",
+                         `ntot_mean_0_5` = "Total nitrogen",
+                         `pre_mean` = "Precipitation",
+                         `clay_mean_0_5` = "Clay",
+                         `bdod_mean_0_5` = "Bulk density",
+                         `cec_mean_0_5` = "Cation exchange capacity",
+                         `phw_mean_0_5` = "pH Water"))
 
-# It doesn't work probably because of above collect stats of the model
+# Add a column for significance stars
+m3_tidy$significance <- ifelse(m3_tidy$p.value < 0.001, "***", 
+                                ifelse(m3_tidy$p.value < 0.01, "**", 
+                                       ifelse(m3_tidy$p.value < 0.05, "*", 
+                                              ifelse(m3_tidy$p.value < 0.1, ".", ""))))
+
+# Define the order of the terms
+m3_tidy$factor <- factor(m3_tidy$factor, levels = unique(m3_tidy$factor))
+
+# Split data into management practices and site properties
+management_practices <- m3_tidy %>%
+filter(factor %in% c("Intercept", "Combination", "Crop", "Fertilisation", "Irrigation", "Soil"))
+
+site_properties <- m3_tidy %>%
+filter(!factor %in% c("Intercept", "Combination", "Crop", "Fertilisation", "Irrigation", "Soil"))
+
+# Plot for management practices
+ggplot(management_practices, aes(x = factor, y = estimate)) + 
+  geom_bar(stat = "identity", aes(fill = factor), alpha = 0.7) + 
+  geom_text(aes(label = significance, y = ifelse(estimate > 0, estimate + 0.001, estimate - 0.001)), 
+            vjust = ifelse(management_practices$estimate > 0, -0.5, 1.5), size = 3.5) + 
+  theme_minimal() + 
+  labs(x = 'Crop, soil and fertilisation practices', y = 'Parameter estimate', 
+       title = 'Meta-regression model estimation on crop yield') + 
+  theme(axis.text.x = element_text(angle = 60, hjust = 1), 
+        panel.border = element_rect(color = "black", fill = NA, size = 1), 
+        axis.ticks.length = unit(-0.5, "cm"), 
+        panel.grid = element_blank(), 
+        legend.position = "none") + 
+  ylim(-0.8, 0.8)
+
+# Plot for site properties
+ggplot(site_properties, aes(x = factor, y = estimate)) + 
+  geom_bar(stat = "identity", aes(fill = "black"), alpha = 0.7) + 
+  geom_text(aes(label = significance, y = ifelse(estimate > 0, estimate + 0.001, estimate - 0.001)), 
+            vjust = ifelse(site_properties$estimate > 0, -0.5, 1.5), size = 2) + 
+  theme_minimal() + 
+  labs(x = 'Site properties', y = 'Parameter estimate', 
+       title = 'Meta-regression model estimation on crop yield') + 
+  theme(axis.text.x = element_text(angle = 60, hjust = 1, size = 6), 
+        panel.border = element_rect(color = "black", fill = NA, size = 1), 
+        axis.ticks.length = unit(-0.5, "cm"), 
+        panel.grid = element_blank(), 
+        legend.position = "none") + 
+  ylim(-0.4, 0.4)
+
+##Interactions refined model
+m3.full2 <- rma.mv(yi, vi, 
+                   mods = ~ man_code_new2 * ctype + cover_crop + crop_rotation + 
+                     + clay_mean_0_5 + bdod_mean_0_5 + cec_mean_0_5 + phw_mean_0_5 
+                   + ntot_mean_0_5,
+                   data = d2, 
+                   random = list(~ 1 | study_ID), 
+                   method = "REML", 
+                   sparse = TRUE)
+# analyse summary stats
+summary(m3.full2)
+
+# Extract and tidy the results for the refined model
+m3_tidy <- broom::tidy(m3.full2)
+
+# Rename terms to more readable names
+m3_tidy <- m3_tidy %>%
+  mutate(factor = recode(term,
+                         `(Intercept)` = "Intercept",
+                         `man_code_new2Combination practices` = "Combination",
+                         `man_code_new2Crop practices` = "Crop",
+                         `man_code_new2Fertilisation practices` = "Fertilisation",
+                         `man_code_new2Irrigation practices` = "Irrigation",
+                         `man_code_new2Soil Practices` = "Soil",
+                         `ctypebeans_oilcrop` = "Beans & oilcrop",
+                         `ctypecereal` = "Cereals",
+                         `ctypemaize` = "Maize",
+                         `ctypeother` = "Other",
+                         `ctyperice` = "Rice",
+                         `ctypevegetable` = "Vegetables",
+                         `cover_cropunknown` = "Cover crop (U)",
+                         `cover_cropyes` = "Cover crop",
+                         `crop_rotationunknown` = "Crop rotation (U)",
+                         `crop_rotationyes` = "Crop rotation",
+                         `clay_mean_0_5` = "Clay",
+                         `bdod_mean_0_5` = "Bulk density",
+                         `cec_mean_0_5` = "Cation exchange capacity",
+                         `phw_mean_0_5` = "pH Water",
+                         `ntot_mean_0_5` = "Total nitrogen",
+                         `man_code_new2Crop practices:ctypebeans_oilcrop` = "Crop:Beans & oilcrop",
+                         `man_code_new2Irrigation practices:ctypebeans_oilcrop` = "Irrigation:Beans & oilcrop",
+                         `man_code_new2Soil Practices:ctypebeans_oilcrop` = "Soil:Beans & oilcrop",
+                         `man_code_new2Crop practices:ctypecereal` = "Crop:Cereals",
+                         `man_code_new2Fertilisation practices:ctypecereal` = "Fertilisation:Cereals",
+                         `man_code_new2Irrigation practices:ctypecereal` = "Irrigation:Cereals",
+                         `man_code_new2Soil Practices:ctypecereal` = "Soil:Cereals",
+                         `man_code_new2Crop practices:ctypemaize` = "Crop:Maize",
+                         `man_code_new2Fertilisation practices:ctypemaize` = "Fertilisation:Maize",
+                         `man_code_new2Soil Practices:ctypemaize` = "Soil:Maize",
+                         `man_code_new2Crop practices:ctypeother` = "Crop:Other",
+                         `man_code_new2Fertilisation practices:ctypeother` = "Fertilisation:Other",
+                         `man_code_new2Irrigation practices:ctypeother` = "Irrigation:Other",
+                         `man_code_new2Fertilisation practices:ctypevegetable` = "Fertilisation:Vegetables",
+                         `man_code_new2Soil Practices:ctypevegetable` = "Soil:Vegetables"))
+
+# Add a column for significance stars
+m3_tidy <- m3_tidy %>%
+  mutate(significance = case_when(
+    p.value < 0.001 ~ "***",
+    p.value < 0.01 ~ "**",
+    p.value < 0.05 ~ "*",
+    p.value < 0.1 ~ ".",
+    TRUE ~ ""
+  ))
+
+# Define the order of the terms
+m3_tidy$factor <- factor(m3_tidy$factor, levels = unique(m3_tidy$factor))
+
+# Split data into management practices and site properties
+management_practices <- m3_tidy %>%
+filter(factor %in% c("Intercept", "Combination", "Crop", "Fertilisation", "Irrigation", "Soil"))
+
+site_properties <- m3_tidy %>%
+filter(!factor %in% c("Intercept", "Combination", "Crop", "Fertilisation", "Irrigation", "Soil"))
+
+# Plot for management practices
+ggplot(management_practices, aes(x = factor, y = estimate)) + 
+  geom_bar(stat = "identity", aes(fill = factor), alpha = 0.7) + 
+  geom_text(aes(label = significance, y = ifelse(estimate > 0, estimate + 0.001, estimate - 0.001)), 
+            vjust = ifelse(management_practices$estimate > 0, -0.5, 1.5), size = 3.5) + 
+  theme_minimal() + 
+  labs(x = 'Crop, soil and fertilisation practices', y = 'Parameter estimate', 
+       title = 'Meta-regression model estimation on crop yield') + 
+  theme(axis.text.x = element_text(angle = 60, hjust = 1), 
+        panel.border = element_rect(color = "black", fill = NA, size = 1), 
+        axis.ticks.length = unit(-0.5, "cm"), 
+        panel.grid = element_blank(), 
+        legend.position = "none") + 
+  ylim(-1.2, 1.2)
+
+# Plot for site properties
+ggplot(site_properties, aes(x = factor, y = estimate)) + 
+  geom_bar(stat = "identity", fill = "black", alpha = 0.7) + 
+  geom_text(aes(label = significance, y = ifelse(estimate > 0, estimate + 0.001, estimate - 0.001)), 
+            vjust = ifelse(site_properties$estimate > 0, -0.5, 1.5), size = 2) + 
+  theme_minimal() + 
+  labs(x = 'Site properties', y = 'Parameter estimate', 
+       title = 'Meta-regression model estimation on crop yield') + 
+  theme(axis.text.x = element_text(angle = 60, hjust = 1, size = 6), 
+        panel.border = element_rect(color = "black", fill = NA, size = 1), 
+        axis.ticks.length = unit(-0.5, "cm"), 
+        panel.grid = element_blank(), 
+        legend.position = "none") + 
+  ylim(-0.8, 1.5)
+
+# Estats of all models that don't work probably because of above collect stats of the model
+estats(m3.empty,m3.full)
+estats(m3.empty,m3.full1)
 estats(m3.full,m3.full1)
+estats(m3.full,m3.full2)
 
-# It doesn't work probabl ybecause of above show anova whether full model is signifiantly different from empty model
+# Empty model compared to the different full models
+anova(m3.empty,m3.full,refit = T)
+anova(m3.empty,m3.full1,refit = T)
+anova(m3.empty,m3.full2,refit = T)
+
+
+# Comparison of first full model with the other two refined models (with interactions and without)
 anova(m3.full,m3.full1,refit = T)
+anova(m3.full,m3.full2,refit = T)
