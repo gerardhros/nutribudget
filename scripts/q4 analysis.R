@@ -14,12 +14,12 @@ d1 <- as.data.table(read_xlsx('data/RQ4_database.xlsx',sheet='RQ4_database'))
 print(data)
 data$kpi_mean<-as.numeric(data$kpi_mean)
 # convert the variables to a factor with the desired order
-data$end_product_type<- factor(data$end_product_type, levels = c("solid_fraction","liquid_fraction","microalgae","struvite","permeate","concentrate","ammonium_salts","ammonium_sulphate","ammonium_nitrate"))
-data$experiment_scale<- factor(data$experiment_scale, levels = c("full_scale","farm","pilot","batch","laboratory"))
+data$end_product_type<- factor(data$end_product_type, levels = c("solid_fraction","liquid_fraction","microalgae","duckweed","struvite","permeate","concentrate","ammonium_salts","ammonium_sulphate","ammonium_nitrate"))
+data$experiment_scale<- factor(data$experiment_scale, levels = c("full scale","farm","pilot","batch","laboratory"))
 data$animal_control<- factor(data$animal_control, levels = c("mix","pig","poultry","cattle","dairy"))
-data$man_code<-factor(data$man_code,levels = c("NRECO","MTREAT"))
+data$man_code<-factor(data$man_code,levels = c("NRECO","NREMO"))
 data$kpi_code<-factor(data$kpi_code,levels=c("TN","TAN","TP","NH3"))
-data$man_treatment<-factor(data$man_treatment,levels = c("ammonia scrubbing","stripping and scrubbing","struvite precipitation","centrifugation","screw press","acidification","ultrafiltration","microfiltration","reverse osmosis","porous polypropylene","pressure filtration","microalgae","gas permeable","wetland","NDN"))
+data$man_treatment<-factor(data$man_treatment,levels = c("ammonia scrubbing","stripping and scrubbing","struvite precipitation","centrifugation","screw press","acidification","ultrafiltration","microfiltration","reverse osmosis","membrane distillation","pressure filtration","microalgae cultivation","duckweed cultivation","gas permeable membrane filtration","constructed wetland","nitrification-denitrification"))
 # what are the unique KPIs included
 table(data$kpi_code)
 
@@ -35,14 +35,14 @@ d1 <- data[man_code =='NRECO']
 ggplot(d1,aes(x= end_product_type,y=kpi_mean,fill=kpi_code)) + 
   geom_boxplot() + 
   theme_bw() + xlab('end product') + ylab('recovery (%)')+
-  scale_x_discrete(limits = c("solid_fraction","liquid_fraction","microalgae","struvite","permeate","concentrate","ammonium_salts","ammonium_sulphate","ammonium_nitrate")) +
+  scale_x_discrete(limits = c("solid_fraction","liquid_fraction","microalgae", "duckweed","struvite","permeate","concentrate","ammonium_salts","ammonium_sulphate","ammonium_nitrate")) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ 
   theme(axis.line = element_line(color='black'),plot.background = element_blank(),panel.grid.minor = element_blank(),panel.grid.major = element_blank())
 # boxplot for the scales
 ggplot(d1,aes(x= end_product_type,y=kpi_mean,fill=experiment_scale)) + 
   geom_boxplot() + 
   theme_bw() + xlab('end product') + ylab('recovery (%)')+
-  scale_x_discrete(limits = c("solid_fraction","liquid_fraction","microalgae","struvite","permeate","concentrate","ammonium_salts","ammonium_sulphate","ammonium_nitrate")) +
+  scale_x_discrete(limits = c("solid_fraction","liquid_fraction","microalgae","duckweed","struvite","permeate","concentrate","ammonium_salts","ammonium_sulphate","ammonium_nitrate")) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ 
   theme(axis.line = element_line(color='black'),plot.background = element_blank(),panel.grid.minor = element_blank(),panel.grid.major = element_blank())
 
@@ -62,7 +62,7 @@ print(unique(d2$experiment_scale))
 d2 <- d2 %>%
   mutate(
     end_product_type = as.factor(end_product_type),
-    experiment_scale = factor(experiment_scale, levels = c("full_scale", "farm", "pilot", "batch", "laboratory"))
+    experiment_scale = factor(experiment_scale, levels = c("full scale", "farm", "pilot", "batch", "laboratory"))
   )
 
 # Check the unique values after conversion
@@ -101,7 +101,7 @@ print(unique(d2$experiment_scale))
 d2 <- d2 %>%
   mutate(
     end_product_type = as.factor(end_product_type),
-    experiment_scale = factor(experiment_scale, levels = c("full_scale", "farm", "pilot", "batch", "laboratory"))
+    experiment_scale = factor(experiment_scale, levels = c("full scale", "farm", "pilot", "batch", "laboratory"))
   )
 
 # Check the unique values after conversion
@@ -140,7 +140,7 @@ print(unique(d2$experiment_scale))
 d2 <- d2 %>%
   mutate(
     end_product_type = as.factor(end_product_type),
-    experiment_scale = factor(experiment_scale, levels = c("full_scale", "farm", "pilot", "batch", "laboratory"))
+    experiment_scale = factor(experiment_scale, levels = c("full scale", "farm", "pilot", "batch", "laboratory"))
   )
 
 # Check the unique values after conversion
@@ -174,20 +174,20 @@ print(summary(m1))
 
 
 
-# subset the file for MTREAT
-d1 <- data[man_code =='MTREAT']
+# subset the file for nutrient removal
+d1 <- data[man_code =='NREMO']
 # boxplot for the end products
 ggplot(d1,aes(x= man_treatment,y=kpi_mean,fill=kpi_code)) + 
   geom_boxplot() + 
   theme_bw() + xlab('manure processing') + ylab('removal rate (%)')+
-  scale_x_discrete(limits = c("ammonia scrubbing","stripping and scrubbing","struvite precipitation","centrifugation","screw press","acidification","ultrafiltration","microfiltration","reverse osmosis","porous polypropylene","pressure filtration","microalgae","gas permeable","wetland","NDN")) +
+  scale_x_discrete(limits = c("ammonia scrubbing","stripping and scrubbing","struvite precipitation","centrifugation","screw press","acidification","ultrafiltration","microfiltration","reverse osmosis","membrane distillation","pressure filtration","microalgae cultivation","duckweed cultivation","gas permeable membrane filtration","constructed wetland","nitrification-denitrification")) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ 
   theme(axis.line = element_line(color='black'),plot.background = element_blank(),panel.grid.minor = element_blank(),panel.grid.major = element_blank())
 # boxplot for the scales
 ggplot(d1,aes(x= man_treatment,y=kpi_mean,fill=experiment_scale)) + 
   geom_boxplot() + 
   theme_bw() + xlab('manure processing') + ylab('removal rate (%)')+
-  scale_x_discrete(limits = c("ammonia scrubbing","stripping and scrubbing","struvite precipitation","centrifugation","screw press","acidification","ultrafiltration","microfiltration","reverse osmosis","porous polypropylene","pressure filtration","microalgae","gas permeable","wetland","NDN")) +
+  scale_x_discrete(limits = c("ammonia scrubbing","stripping and scrubbing","struvite precipitation","centrifugation","screw press","acidification","ultrafiltration","microfiltration","reverse osmosis","membrane distillation","pressure filtration","microalgae cultivation","duckweed cultivation","gas permeable membrane filtration","constructed wetland","nitrification-denitrification")) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ 
   theme(axis.line = element_line(color='black'),plot.background = element_blank(),panel.grid.minor = element_blank(),panel.grid.major = element_blank())
 
@@ -204,7 +204,7 @@ print(unique(d2$man_treatment))
 d2 <- d2 %>%
   mutate(
     end_product_type = as.factor(end_product_type),
-    animal_control = factor(man_treatment, levels = c("struvite precipitation","stripping and scrubbing", "centrifugation","ammonia scrubbing","screw press","ultrafiltration","microfiltration","reverse osmosis","microalgae"))
+    animal_control = factor(man_treatment, levels = c("ammonia scrubbing","stripping and scrubbing","struvite precipitation","centrifugation","screw press","acidification","ultrafiltration","microfiltration","reverse osmosis","membrane distillation","pressure filtration","microalgae cultivation","duckweed cultivation","gas permeable membrane filtration","constructed wetland","nitrification-denitrification"))
   )
 
 # Check the unique values after conversion
@@ -244,7 +244,7 @@ print(unique(d2$man_treatment))
 d2 <- d2 %>%
   mutate(
     end_product_type = as.factor(end_product_type),
-    animal_control = factor(man_treatment, levels = c("struvite precipitation","stripping and scrubbing", "centrifugation","ammonia scrubbing","screw press","ultrafiltration","microfiltration","reverse osmosis","microalgae"))
+    animal_control = factor(man_treatment, levels = c("ammonia scrubbing","stripping and scrubbing","struvite precipitation","centrifugation","screw press","acidification","ultrafiltration","microfiltration","reverse osmosis","membrane distillation","pressure filtration","microalgae cultivation","duckweed cultivation","gas permeable membrane filtration","constructed wetland","nitrification-denitrification"))
   )
 
 # Check the unique values after conversion
@@ -283,7 +283,7 @@ print(unique(d2$man_treatment))
 d2 <- d2 %>%
   mutate(
     end_product_type = as.factor(end_product_type),
-    animal_control = factor(man_treatment, levels = c("struvite precipitation","stripping and scrubbing", "centrifugation","ammonia scrubbing","screw press","ultrafiltration","microfiltration","reverse osmosis","microalgae"))
+    animal_control = factor(man_treatment, levels = c("ammonia scrubbing","stripping and scrubbing","struvite precipitation","centrifugation","screw press","acidification","ultrafiltration","microfiltration","reverse osmosis","membrane distillation","pressure filtration","microalgae cultivation","duckweed cultivation","gas permeable membrane filtration","constructed wetland","nitrification-denitrification"))
   )
 
 # Check the unique values after conversion
@@ -323,7 +323,7 @@ print(unique(d2$man_treatment))
 d2 <- d2 %>%
   mutate(
     end_product_type = as.factor(end_product_type),
-    animal_control = factor(man_treatment, levels = c("struvite precipitation","stripping and scrubbing", "centrifugation","ammonia scrubbing","screw press","ultrafiltration","microfiltration","reverse osmosis","microalgae"))
+    animal_control = factor(man_treatment, levels = c("ammonia scrubbing","stripping and scrubbing","struvite precipitation","centrifugation","screw press","acidification","ultrafiltration","microfiltration","reverse osmosis","membrane distillation","pressure filtration","microalgae cultivation","duckweed cultivation","gas permeable membrane filtration","constructed wetland","nitrification-denitrification"))
   )
 
 # Check the unique values after conversion
