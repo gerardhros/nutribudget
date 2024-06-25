@@ -86,7 +86,7 @@ if (length(unique(d2$experiment_scale)) < 2) {
 }
 
 # Fit the linear model again
-m1 <- lm(kpi_mean ~ end_product_type * experiment_scale, data = d2)
+m1 <- lm(kpi_mean ~ end_product_type * experiment_scale+ animal_control-1, data = d2)
 cat("\nSummary of the linear model:\n")
 print(summary(m1))
 
@@ -125,7 +125,7 @@ if (length(unique(d2$experiment_scale)) < 2) {
 }
 
 # Fit the linear model again
-m1 <- lm(kpi_mean ~ end_product_type * experiment_scale, data = d2)
+m1 <- lm(kpi_mean ~ end_product_type * experiment_scale+ animal_control-1, data = d2)
 cat("\nSummary of the linear model:\n")
 print(summary(m1))
 
@@ -164,7 +164,7 @@ if (length(unique(d2$experiment_scale)) < 2) {
 }
 
 # Fit the linear model again
-m1 <- lm(kpi_mean ~ end_product_type * experiment_scale, data = d2)
+m1 <- lm(kpi_mean ~ end_product_type * experiment_scale+ animal_control-1, data = d2)
 cat("\nSummary of the linear model:\n")
 print(summary(m1))
 
@@ -228,7 +228,7 @@ if (length(unique(d2$experiment_scale)) < 2) {
 }
 
 # Fit the linear model again
-m1 <- lm(kpi_mean ~ experiment_scale * man_treatment, data = d2)
+m1 <- lm(kpi_mean ~ experiment_scale * man_treatment+ animal_control-1, data = d2)
 cat("\nSummary of the linear model:\n")
 print(summary(m1))
 
@@ -268,7 +268,7 @@ if (length(unique(d2$experiment_scale)) < 2) {
 }
 
 # Fit the linear model again
-m1 <- lm(kpi_mean ~ experiment_scale * man_treatment, data = d2)
+m1 <- lm(kpi_mean ~ experiment_scale * man_treatment+ animal_control-1, data = d2)
 cat("\nSummary of the linear model:\n")
 print(summary(m1))
 
@@ -307,7 +307,7 @@ if (length(unique(d2$experiment_scale)) < 2) {
 }
 
 # Fit the linear model again
-m1 <- lm(kpi_mean ~ experiment_scale * man_treatment, data = d2)
+m1 <- lm(kpi_mean ~ experiment_scale * man_treatment+ animal_control-1, data = d2)
 cat("\nSummary of the linear model:\n")
 print(summary(m1))
 
@@ -347,6 +347,6 @@ if (length(unique(d2$experiment_scale)) < 2) {
 }
 
 # Fit the linear model again
-m1 <- lm(kpi_mean ~ experiment_scale * man_treatment, data = d2)
+m1 <- lm(kpi_mean ~ experiment_scale * man_treatment+ animal_control-1, data = d2)
 cat("\nSummary of the linear model:\n")
 print(summary(m1))
