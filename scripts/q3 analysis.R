@@ -157,7 +157,7 @@ table(d1$kpi_type)
 
   # make a full model with all main factors together    
   m3.full <- metafor::rma.mv(yi,vi, 
-                             mods = ~animal_type + supplement_category + supplemental_rate + stage,
+                             mods = ~animal_type + supplement_category + supplemental_rate + stage-1,
                              data=d2,random= list(~ 1|study_ID), method="REML",sparse = TRUE)
   
   # analyse summary stats
@@ -175,7 +175,7 @@ table(d1$kpi_type)
   # Find the unique values for each variable
   sapply(lapply(d2, unique), length)
   m3.full <- metafor::rma.mv(yi,vi, 
-                             mods = ~ supplemental_rate *supplement_category + early_stage,
+                             mods = ~ supplemental_rate *supplement_category + early_stage-1,
                              data=d2,random= list(~ 1|study_ID), method="REML",sparse = TRUE)
   
   # analyse summary stats
@@ -190,7 +190,7 @@ table(d1$kpi_type)
   m3_tidy <- tidy(m3.full)
   
   # Define new column values
-  new_column_values <- c("intercept","supplemental_rate","supplemental_category","supplemental_category","supplemental_category","supplemental_category","supplemental_category","stage","stage","interaction","interaction","interaction","interaction","interaction")
+  new_column_values <- c("supplemental_rate","supplemental_category","supplemental_category","supplemental_category","supplemental_category","supplemental_category","supplemental_category","stage","stage","interaction","interaction","interaction","interaction","interaction")
   
   # Add new column to data frame
   m3_tidy$factor <- new_column_values
@@ -202,9 +202,9 @@ table(d1$kpi_type)
                                             ifelse(m3_tidy$p.value < 0.1, "."))))
   print(m3_tidy$term)
   # Named vector with abbreviations
-  abbreviations <- c("supplemental_rate"="rate","supplement_categorygrassjuice"="grassjuice","supplement_categoryinsect"="insect","supplement_categorylegumes"="legumes","supplement_categorymicroalgae"="microalgae","supplement_categoryrapeseed"="rapeseed","early_stageother"="late_stage","early_stagestarting"="early_stage", "supplemental_rate:supplement_categorygrassjuice"="rate+grassjuice","supplemental_rate:supplement_categoryinsect"="rate+insect","supplemental_rate:supplement_categorylegumes"="rate+legumes","supplemental_rate:supplement_categorymicroalgae"="rate+microalgae","supplemental_rate:supplement_categoryrapeseed"="rate+rapeseed","intercept"="intercept")
+  abbreviations <- c("supplemental_rate"="rate","supplement_categoryduckweed"="duckweed","supplement_categorygrassjuice"="grassjuice","supplement_categoryinsect"="insect","supplement_categorylegumes"="legumes","supplement_categorymicroalgae"="microalgae","supplement_categoryrapeseed"="rapeseed","early_stageother"="late_stage","early_stagestarting"="early_stage", "supplemental_rate:supplement_categorygrassjuice"="rate+grassjuice","supplemental_rate:supplement_categoryinsect"="rate+insect","supplemental_rate:supplement_categorylegumes"="rate+legumes","supplemental_rate:supplement_categorymicroalgae"="rate+microalgae","supplemental_rate:supplement_categoryrapeseed"="rate+rapeseed")
   # Define the order of the terms
-  m3_tidy$term <- factor(m3_tidy$term, levels = c("supplemental_rate","supplement_categorygrassjuice","supplement_categoryinsect","supplement_categorylegumes","supplement_categorymicroalgae","supplement_categoryrapeseed","early_stageother","early_stagestarting","supplemental_rate:supplement_categorygrassjuice","supplemental_rate:supplement_categoryinsect","supplemental_rate:supplement_categorylegumes","supplemental_rate:supplement_categorymicroalgae","supplemental_rate:supplement_categoryrapeseed","intercept"))
+  m3_tidy$term <- factor(m3_tidy$term, levels = c("supplemental_rate","supplement_categoryduckweed","supplement_categorygrassjuice","supplement_categoryinsect","supplement_categorylegumes","supplement_categorymicroalgae","supplement_categoryrapeseed","early_stageother","early_stagestarting","supplemental_rate:supplement_categorygrassjuice","supplemental_rate:supplement_categoryinsect","supplemental_rate:supplement_categorylegumes","supplemental_rate:supplement_categorymicroalgae","supplemental_rate:supplement_categoryrapeseed"))
   
   # Create the bar plot with significance stars
   ggplot(m3_tidy, aes(x = term, y = estimate)) +
@@ -349,7 +349,7 @@ table(d1$kpi_type)
   # Find the unique values for each variable
   sapply(lapply(d2, unique), length)
   m3.full <- metafor::rma.mv(yi,vi, 
-                             mods = ~ supplemental_rate *supplement_category+stage,
+                             mods = ~ supplemental_rate *supplement_category+stage-1,
                              data=d2,random= list(~ 1|study_ID), method="REML",sparse = TRUE)
   # analyse summary stats
   summary(m3.full)
@@ -366,7 +366,7 @@ table(d1$kpi_type)
   m3_tidy <- tidy(m3.full)
   
  # Define new column values
-  new_column_values <- c("intercept","supplemental_rate","supplemental_category","supplemental_category","supplemental_category","stage","stage","interaction","interaction")
+  new_column_values <- c("supplemental_rate","supplemental_category","supplemental_category","supplemental_category","supplemental_category","stage","stage","interaction","interaction")
   
   # Add new column to data frame
   m3_tidy$factor <- new_column_values
@@ -377,9 +377,9 @@ table(d1$kpi_type)
                                         ifelse(m3_tidy$p.value < 0.05, "*", 
                                                ifelse(m3_tidy$p.value < 0.1, ".",""))))
   # Named vector with abbreviations
-  abbreviations <- c("supplemental_rate"="rate","supplement_categorylegumes"="legumes","supplement_categorymicroalgae"="microalgae","supplement_categoryrapeseed"="rapeseed","stagegrowing"="growing","stagewhole"="whole","supplemental_rate:supplement_categorylegumes"="rate+legumes","supplemental_rate:supplement_categoryrapeseed"="rate+rapeseed","intercept"="intercept")
+  abbreviations <- c("supplemental_rate"="rate","supplement_categoryinsect"="insect","supplement_categorylegumes"="legumes","supplement_categorymicroalgae"="microalgae","supplement_categoryrapeseed"="rapeseed","stagegrowing"="growing","stagewhole"="whole","supplemental_rate:supplement_categorylegumes"="rate+legumes","supplemental_rate:supplement_categoryrapeseed"="rate+rapeseed")
   # Define the order of the terms
-  m3_tidy$term <- factor(m3_tidy$term, levels = c("supplemental_rate","supplement_categorylegumes","supplement_categorymicroalgae","supplement_categoryrapeseed","supplemental_rate:supplement_categorylegumes","stagegrowing","stagewhole","supplemental_rate:supplement_categoryrapeseed","intercept"))
+  m3_tidy$term <- factor(m3_tidy$term, levels = c("supplemental_rate","supplement_categoryinsect","supplement_categorylegumes","supplement_categorymicroalgae","supplement_categoryrapeseed","supplemental_rate:supplement_categorylegumes","stagegrowing","stagewhole","supplemental_rate:supplement_categoryrapeseed"))
   
   # Create the bar plot with significance stars
   ggplot(m3_tidy, aes(x = term, y = estimate)) +
@@ -532,7 +532,7 @@ table(d1$kpi_type)
   
   # make a full model with all main factors together    
   m3.full <- metafor::rma.mv(yi,vi, 
-                             mods = ~animal_type + supplement_category + supplemental_rate + stage,
+                             mods = ~animal_type + supplement_category + supplemental_rate + stage-1,
                              data=d2,random= list(~ 1|study_ID), method="REML",sparse = TRUE)
   
   # analyse summary stats
@@ -550,7 +550,7 @@ table(d1$kpi_type)
   # Find the unique values for each variable
   sapply(lapply(d2, unique), length)
   m3.full <- metafor::rma.mv(yi,vi, 
-                             mods =  ~ supplemental_rate* supplement_category + animal_type + stage * supplement_category,
+                             mods =  ~ supplemental_rate* supplement_category + animal_type + stage * supplement_category-1,
                              data=d2,random= list(~ 1|study_ID), method="REML",sparse = TRUE)
   
   # analyse summary stats
@@ -566,7 +566,7 @@ table(d1$kpi_type)
   m3_tidy <- tidy(m3.full)
   
   # Define new column values
-  new_column_values <- c("intercept","supplemental_rate","supplemental_category","supplemental_category","supplemental_category","supplemental_category","supplemental_category","animal_type","animal_stage","animal_stage","animal_stage","interaction","interaction","interaction","interaction","interaction","interaction","interaction")
+  new_column_values <- c("supplemental_rate","supplemental_category","supplemental_category","supplemental_category","supplemental_category","supplemental_category","supplemental_category","animal_type","animal_stage","animal_stage","animal_stage","interaction","interaction","interaction","interaction","interaction","interaction","interaction")
   
   # Add new column to data frame
   m3_tidy$factor <- new_column_values
@@ -578,9 +578,9 @@ table(d1$kpi_type)
                                                ifelse(m3_tidy$p.value < 0.1, ".",""))))
   
   # Named vector with abbreviations
-  abbreviations <- c("supplemental_rate"="rate","supplement_categorygrassjuice"="grassjuice","supplement_categoryinsect"="insect","supplement_categorylegumes"="legumes","supplement_categorymicroalgae"="microalage","supplement_categoryrapeseed"="rapeseed","supplemental_rate:supplement_categorygrassjuice"="rate+grassjuice","supplemental_rate:supplement_categoryinsect"="rate+insect","supplemental_rate:supplement_categorylegumes"="rate+legumes","supplemental_rate:supplement_categorymicroalgae"="rate+microalgae","supplemental_rate:supplement_categoryrapeseed"="rate+rapeseed","supplement_categoryinsect:stagegrowing"="insect at growing stage","supplement_categorylegumes:stagegrowing"="legumes at growing stage","animal_typepig"="pig","stagegrowing"="growing","stagestarting"="starting","stagewhole"="whole","intercept"="intercept")
+  abbreviations <- c("supplemental_rate"="rate","supplement_categoryduckweed"="duckweed","supplement_categorygrassjuice"="grassjuice","supplement_categoryinsect"="insect","supplement_categorylegumes"="legumes","supplement_categorymicroalgae"="microalage","supplement_categoryrapeseed"="rapeseed","supplemental_rate:supplement_categorygrassjuice"="rate+grassjuice","supplemental_rate:supplement_categoryinsect"="rate+insect","supplemental_rate:supplement_categorylegumes"="rate+legumes","supplemental_rate:supplement_categorymicroalgae"="rate+microalgae","supplemental_rate:supplement_categoryrapeseed"="rate+rapeseed","supplement_categoryinsect:stagegrowing"="insect at growing stage","supplement_categorylegumes:stagegrowing"="legumes at growing stage","animal_typepig"="pig","stagegrowing"="growing","stagestarting"="starting","stagewhole"="whole")
   # Define the order of the terms
-  m3_tidy$term <- factor(m3_tidy$term, levels = c("supplemental_rate","supplement_categorygrassjuice","supplement_categoryinsect","supplement_categorylegumes","supplement_categorymicroalgae","supplement_categoryrapeseed","supplemental_rate:supplement_categorygrassjuice","supplemental_rate:supplement_categoryinsect","supplemental_rate:supplement_categorylegumes","supplemental_rate:supplement_categorymicroalgae","supplemental_rate:supplement_categoryrapeseed","supplement_categoryinsect:stagegrowing","supplement_categorylegumes:stagegrowing","animal_typepig","stagegrowing","stagestarting","stagewhole","intercept"))
+  m3_tidy$term <- factor(m3_tidy$term, levels = c("supplemental_rate","supplement_categoryduckweed","supplement_categorygrassjuice","supplement_categoryinsect","supplement_categorylegumes","supplement_categorymicroalgae","supplement_categoryrapeseed","supplemental_rate:supplement_categorygrassjuice","supplemental_rate:supplement_categoryinsect","supplemental_rate:supplement_categorylegumes","supplemental_rate:supplement_categorymicroalgae","supplemental_rate:supplement_categoryrapeseed","supplement_categoryinsect:stagegrowing","supplement_categorylegumes:stagegrowing","animal_typepig","stagegrowing","stagestarting","stagewhole"))
   
   # Create the bar plot with significance stars
   ggplot(m3_tidy, aes(x = term, y = estimate)) +
