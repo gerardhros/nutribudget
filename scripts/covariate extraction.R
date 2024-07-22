@@ -8,8 +8,8 @@ rm(list=ls())
 require(readxl);require(terra);require(data.table);require(sf)
 require(stringr); require(foreign)
 
-# variable selection: options yield, ph
-var = 'ph' 
+# variable selection: options yield, ph, soc
+var = 'soc' 
 
 # load in the data with location
 if(var=='yield'){
@@ -17,6 +17,8 @@ if(var=='yield'){
   setnames(d1,c('lon_deg','lat_deg'),c('lon','lat'))
 } else if(var=='ph'){
   d1 <- fread('data/ph_lonlat_unique.csv')
+} else if(var=='soc'){
+  d1 <- fread('data/soc_lonlat_unique.csv')
 }
 
 # convert to a spatial object
@@ -146,7 +148,9 @@ climate <- rast(climate)
   if(var=='yield'){
     fwrite(dt,'products/240523_covariates_yield.csv')
   } else if(var=='ph'){
-    fwrite(dt,'products/240523_covariates_ph.csv')
+    fwrite(dt,'products/240617_covariates_ph.csv')
+  } else if(var=='soc'){
+    fwrite(dt,'products/240617_covariates_soc.csv')
   }
   
  
