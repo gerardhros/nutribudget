@@ -671,14 +671,14 @@ for(i in fcols){
   
   p10 <- ggplot() +
         geom_sf(data=s.nuts,color='black',fill=NA,show.legend = FALSE)+
-        geom_tile(data = r.ncu,aes(x=x,y=y,fill= fifelse(5.5 <= ph + SMD_COMBI,'realised','not realised'))) +
+        geom_tile(data = r.ncu,aes(x=x,y=y,fill= fifelse(5.5 <= ph + SMD_LM,'realised','not realised'))) +
         scale_fill_viridis_d(direction=-1)+
         theme(legend.position.inside = c(0.1,0.8))+
         labs(fill = 'Target pH\nachieved')+
         xlab("Longitude") + ylab("Latitude") +
-        ggtitle("Soil target pH achieved, combi of measures") +
+        ggtitle("Soil target pH achieved via lime") +
         coord_sf(crs = 4326) + theme_bw()
-  ggsave(plot = p10, filename = paste0(floc,'up_ph_target_combi.jpg'),width = 12,height=12,units='cm') 
+  ggsave(plot = p10, filename = paste0(floc,'up_ph_target_lime.jpg'),width = 12,height=12,units='cm') 
   
   # give quantile
   data.table(quantile = paste0('Q',c(0.05,0.25,0.50,0.75,0.95)),
@@ -693,7 +693,7 @@ for(i in fcols){
              COMBI = round(quantile(d5$SMD_COMBI,c(0.05,0.25,0.5,0.75,0.95),na.rm=T),2))
   
   table(d5$ph <= 5.5)*100/nrow(d5)
-  table(d5$ph + d5$SMD_COMBI<= 5.5)*100/nrow(d5)
+  table(d5$ph + d5$SMD_LM<= 5.5)*100/nrow(d5)
   
   # save predicted output
   d6 <- copy(d5)
