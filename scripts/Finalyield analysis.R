@@ -7,8 +7,7 @@ rm(list=ls())
 
 #required packages
 require(readxl);require(data.table);require(metafor)
-require(ggplot2)
-#require(broom);require(dplyr); require(sf)
+require(ggplot2);require(sf);require(broom)
 
 # --- load in databases and clean up data ----
 
@@ -840,4 +839,9 @@ require(ggplot2)
              fert = round(quantile(d5$mlnRR_fert*100,c(0.05,0.25,0.5,0.75,0.95),na.rm=T),2),
              crop = round(quantile(d5$mlnRR_crop   *100,c(0.05,0.25,0.5,0.75,0.95),na.rm=T),2),
              combi = round(quantile(d5$mlnRR_combi*100,c(0.05,0.25,0.5,0.75,0.95),na.rm=T),2))
+  
+  # save predicted output
+  d6 <- copy(d5)
+  setnames(d6,tolower(gsub('mlnRR_','yield_',colnames(d6))))
+  saveRDS(d6,paste0(floc,'ncu_yield_meas.rds'))
   

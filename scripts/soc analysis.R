@@ -416,9 +416,10 @@ rm(list=ls())
   # model coefficients
   m1.coeff <- as.data.table(broom::tidy(m1))
   
-  # what is the mean and SD pH change
-  SDp <- d2[, mean(sqrt((replication -1) * kpi_treat_sd^2 + (replication - 1)*kpi_contr_sd^2)/(2*replication - 2))]
-  SMD <- d2[, mean((kpi_treat - kpi_control)/(sqrt((replication -1) * kpi_treat_sd^2 + (replication - 1)*kpi_contr_sd^2)/(2*replication - 2)))]
+  # what is the mean and SD for SOC change
+  SDp <- d2[, mean(sqrt(((replication -1) * kpi_treat_sd ^2 + (replication - 1)*kpi_contr_sd  ^2)/(2*replication - 2)))]
+  SMD <- d2[, mean((kpi_treat  - kpi_control )/SDp)]
+  
   
   # rescale the variables to unit variance
   d4[, bdod_mean_0_5 := (bdod_mean_0_5 - mean(d1$bdod_mean_0_5,na.rm=T))/sd(d1$bdod_mean_0_5,na.rm=T)]
@@ -536,3 +537,9 @@ rm(list=ls())
   
   table(d5$soc_ref >= d5$soc_target)*100/nrow(d5)
   table(d5$soc_ref + d5$SMD_COMBI >= d5$soc_target)*100/nrow(d5)
+  
+  # save predicted output
+  d6 <- copy(d5)
+  d6 <- d6[,.(ncu,soc_ref,soc_target,SMD_NT,SMD_RT,SMD_COMBI)]
+  setnames(d6,tolower(gsub('SMD_','soc_',colnames(d6))))
+  saveRDS(d6,paste0(floc,'ncu_soc_meas.rds'))

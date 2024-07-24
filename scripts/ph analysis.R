@@ -478,7 +478,6 @@ for(i in fcols){
 
 # --- application of the model on the INTEGRATOR dataset ----
   
-  # rerun the above code to regenerate model m3.full1 but now without standardization
   # save the model and use this model for application
   saveRDS(m4.full,file='products/mamodel_ph.rds')
   
@@ -501,15 +500,19 @@ for(i in fcols){
   # model coefficients
   m1.coeff <- as.data.table(broom::tidy(m1))
   
-  # what is the mean and SD pH change
-  SDp <- d2[, mean(sqrt((replication -1) * kpi_treat_sd^2 + (replication - 1)*kpi_contr_sd^2)/(2*replication - 2))]
-  SMD <- d2[, mean((kpi_treat - kpi_control)/(sqrt((replication -1) * kpi_treat_sd^2 + (replication - 1)*kpi_contr_sd^2)/(2*replication - 2)))]
+  # what is the mean and SD for pH change
+  SDp <- d2[, mean(sqrt(((replication -1) * kpi_treat_sd ^2 + (replication - 1)*kpi_contr_sd  ^2)/(2*replication - 2)))]
+  SMD <- d2[, mean((kpi_treat  - kpi_control )/SDp)]
   
   # replacing missing inputs with median value
   d4[,parea.rtct := pmax(0,parea.rtct,na.rm=T)]
   d4[,parea.ntct := pmax(0,parea.ntct,na.rm=T)]
   d4[is.na(phw_mean_0_5), phw_mean_0_5 := median(d4$phw_mean_0_5,na.rm=T)]
   d4[is.na(tmp_mean), tmp_mean := median(d4$tmp_mean,na.rm=T)]
+  
+  # standardize
+  d4[, tmp_mean := (tmp_mean - mean(d1$tmp_mean,na.rm=T))/sd(d1$tmp_mean,na.rm=T)]
+  d4[, phw_mean_0_5 := (phw_mean_0_5 * 0.1 - mean(d1$ph,na.rm=T))/sd(d1$ph,na.rm=T)]
   
   # estimate the baseline response given the soil properties
   d4[, SMD := m1.coeff[grepl('mat',term),estimate] * tmp_mean]
@@ -540,7 +543,7 @@ for(i in fcols){
   d4[,SMD_OF := (SMD + m1.coeff[grepl('man_codeOF',term),estimate]) * SDp]
   d4[,SMD_RT := (SMD + m1.coeff[grepl('man_codeRT',term),estimate]) * SDp]
   d4[,SMD_ZT := (SMD + m1.coeff[grepl('man_codeZT',term),estimate]) * SDp]
-  d4[, SMD_COMBI := (SMD + sum(sort(m1.coeff[grepl('man_codeRT|man_codeCC|man_codeOF|man_codeLM',term),estimate],decreasing = T) /c(1:4))) * SDp]
+  d4[, SMD_COMBI := (SMD + sum(m1.coeff[grepl('man_codeRT|man_codeCC|man_codeOF|man_codeLM',term),estimate] /c(4,1,3,2))) * SDp]
   
   # take weighted mean per ncu
   cols <- colnames(d4)[grepl('^SMD_|^ph$',colnames(d4))]
@@ -549,7 +552,7 @@ for(i in fcols){
   
 # --- plot impact of measures on crop yield ----
   
-  # laod in NUTS shapefile
+  # load in NUTS shapefile
   s.nuts <- st_read(paste0(floc,'eu_nuts.gpkg'),layer='eu_nuts')
   
   # get the raster to plot
@@ -565,8 +568,8 @@ for(i in fcols){
   r.ncu <- merge(r1.p, d5, by.x = 'gncu2010_ext', by.y = 'ncu')
   
   # plot impact of soil measures on crop yield
-  pbreak <- c(-2,-1,0,0.5,1,1000)
-  plabel <- c('< -1','-1 - 0','0 - 0.5','0.5 - 1.0','> 1')
+  pbreak <- c(-2,0,0.5,1,1000)
+  plabel <- c('< 0','0 - 0.5','0.5 - 1.0','> 1')
   p1 <- ggplot() +
         geom_sf(data=s.nuts,color='black',fill=NA,show.legend = FALSE)+
         geom_tile(data = r.ncu,aes(x=x,y=y,fill= cut(SMD_BC, pbreak,labels = plabel))) +
@@ -691,4 +694,9 @@ for(i in fcols){
   
   table(d5$ph <= 5.5)*100/nrow(d5)
   table(d5$ph + d5$SMD_COMBI<= 5.5)*100/nrow(d5)
+  
+  # save predicted output
+  d6 <- copy(d5)
+  setnames(d6,tolower(gsub('SMD_','PH_',colnames(d6))))
+  saveRDS(d6,paste0(floc,'ncu_ph_meas.rds'))
   
