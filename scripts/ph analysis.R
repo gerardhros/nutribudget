@@ -538,6 +538,7 @@ for(i in fcols){
   d4[,SMD_BC := (SMD + m1.coeff[grepl('man_codeBC',term),estimate]) * SDp]
   d4[,SMD_CC := (SMD + m1.coeff[grepl('man_codeCC',term),estimate]) * SDp]
   d4[,SMD_CT := (SMD + m1.coeff[grepl('man_codeCT',term),estimate]) * SDp]
+  d4[,SMD_NT := (SMD + m1.coeff[grepl('man_codeNT',term),estimate]) * SDp]
   d4[,SMD_LM := (SMD + m1.coeff[grepl('man_codeLM',term),estimate]) * SDp]
   d4[,SMD_NF := (SMD + m1.coeff[grepl('man_codeNF',term),estimate]) * SDp]
   d4[,SMD_OF := (SMD + m1.coeff[grepl('man_codeOF',term),estimate]) * SDp]
@@ -577,7 +578,7 @@ for(i in fcols){
         theme(legend.position.inside = c(0.1,0.8))+
         labs(fill = 'Effect on\nsoil pH (-)')+
         xlab("Longitude") + ylab("Latitude") +
-        ggtitle("Effect of BC on soil pH") +
+        ggtitle("Effect of biochar on soil pH") +
         coord_sf(crs = 4326) + theme_bw()
   ggsave(plot = p1, filename = paste0(floc,'up_ph_meas_bc.jpg'),width = 12,height=12,units='cm')  
   
@@ -594,14 +595,14 @@ for(i in fcols){
   
   p3 <- ggplot() +
         geom_sf(data=s.nuts,color='black',fill=NA,show.legend = FALSE)+
-        geom_tile(data = r.ncu,aes(x=x,y=y,fill= cut(SMD_CT, pbreak,labels = plabel))) +
+        geom_tile(data = r.ncu,aes(x=x,y=y,fill= cut(SMD_NT, pbreak,labels = plabel))) +
         scale_fill_viridis_d(direction=-1)+
         theme(legend.position.inside = c(0.1,0.8))+
         labs(fill = 'Effect on\nsoil pH (-)')+
         xlab("Longitude") + ylab("Latitude") +
-        ggtitle("Effect of tillage on soil pH") +
+        ggtitle("Effect of no-tillage on soil pH") +
         coord_sf(crs = 4326) + theme_bw()
-  ggsave(plot = p3, filename = paste0(floc,'up_ph_meas_ct.jpg'),width = 12,height=12,units='cm') 
+  ggsave(plot = p3, filename = paste0(floc,'up_ph_meas_nt.jpg'),width = 12,height=12,units='cm') 
   
   p4 <- ggplot() +
         geom_sf(data=s.nuts,color='black',fill=NA,show.legend = FALSE)+
