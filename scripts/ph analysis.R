@@ -226,12 +226,13 @@ for(i in fcols){
   
   
   #extract the significance of the estimate
-  out.dgr[pval <= 0.001, significance := '***']
-  out.dgr[pval <= 0.01, significance := '**']
-  out.dgr[pval <= 0.05, significance := '*']
-  out.dgr[pval <= 0.10, significance := '.']
   out.dgr[pval > 0.10, significance := '']
-
+  out.dgr[pval <= 0.10, significance := '.']
+  out.dgr[pval <= 0.05, significance := '*']
+  out.dgr[pval <= 0.01, significance := '**']
+  out.dgr[pval <= 0.001, significance := '***']
+  
+  
   ## plot the var and factor from the model
   if(FALSE){
     
@@ -320,11 +321,11 @@ for(i in fcols){
     m3_tidy[,colorfactor := new_column_values]
     
     # add significance
-    m3_tidy[p.value <= 0.001, significance := '***']
-    m3_tidy[p.value <= 0.01, significance := '**']
-    m3_tidy[p.value <= 0.05, significance := '*']
-    m3_tidy[p.value <= 0.10, significance := '.']
     m3_tidy[p.value > 0.10, significance := '']
+    m3_tidy[p.value <= 0.10, significance := '.']
+    m3_tidy[p.value <= 0.05, significance := '*']
+    m3_tidy[p.value <= 0.01, significance := '**']
+    m3_tidy[p.value <= 0.001, significance := '***']
     
     # add new column names
     m3_tidy[term == 'man_codeBC',factor := 'Biochar']
@@ -449,11 +450,12 @@ for(i in fcols){
     m4_tidy[,factor := factor(factor, levels = unique(factor))]
     
     # Add a column for significance stars
-    m4_tidy[p.value <= 0.001, significance := '***']
-    m4_tidy[p.value <= 0.01, significance := '**']
-    m4_tidy[p.value <= 0.05, significance := '*']
-    m4_tidy[p.value <= 0.10, significance := '.']
     m4_tidy[p.value > 0.10, significance := '']
+    m4_tidy[p.value <= 0.10, significance := '.']
+    m4_tidy[p.value <= 0.05, significance := '*']
+    m4_tidy[p.value <= 0.01, significance := '**']
+    m4_tidy[p.value <= 0.001, significance := '***']
+    
     
     # remove two terms
     m4_tidy <- m4_tidy[!grepl('codeCC|codeNT',term)]

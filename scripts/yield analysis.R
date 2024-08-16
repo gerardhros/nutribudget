@@ -282,10 +282,11 @@ require(ggplot2);require(sf);require(broom)
   filtered_data <- out.dgr[factor == 'man_code' & !grepl('intercept|intrcpt', var)]
 
   # Add asterisks for significance
-  filtered_data[pval <= 0.001, significance := '***']
-  filtered_data[pval <= 0.01, significance := '**']
-  filtered_data[pval <= 0.05, significance := '*']
   filtered_data[pval > 0.05, significance := '']
+  filtered_data[pval <= 0.05, significance := '*']
+  filtered_data[pval <= 0.01, significance := '**']
+  filtered_data[pval <= 0.001, significance := '***']
+  
   
   # set order variable
   practice_order <- filtered_data$var
@@ -315,10 +316,11 @@ require(ggplot2);require(sf);require(broom)
   filtered_data <- out.dgr[grepl('^nutri_dose',factor) & !grepl('intercept|intrcpt', var)]
 
   # Add asterisks for significance
-  filtered_data[pval <= 0.001, significance := '***']
-  filtered_data[pval <= 0.01, significance := '**']
-  filtered_data[pval <= 0.05, significance := '*']
   filtered_data[pval > 0.05, significance := '']
+  filtered_data[pval <= 0.05, significance := '*']
+  filtered_data[pval <= 0.01, significance := '**']
+  filtered_data[pval <= 0.001, significance := '***']
+  
   
   # Plot the filtered data of fertilization dose type
   p2 <- ggplot(data = filtered_data) +
@@ -385,10 +387,11 @@ require(ggplot2);require(sf);require(broom)
   filtered_data[factor == 'ctype' & var == 'vegetable' ,label := 'vegetables']
  
   # Add asterisks for significance
-  filtered_data[pval <= 0.001, significance := '***']
-  filtered_data[pval <= 0.01, significance := '**']
-  filtered_data[pval <= 0.05, significance := '*']
   filtered_data[pval > 0.05, significance := '']
+  filtered_data[pval <= 0.05, significance := '*']
+  filtered_data[pval <= 0.01, significance := '**']
+  filtered_data[pval <= 0.001, significance := '***']
+  
   
   # Define the order for the labels
   ordered_labels <- c('crop residue (no)', 'crop residue (yes)', 'crop residue (unknown)',
@@ -530,13 +533,12 @@ require(ggplot2);require(sf);require(broom)
   m3_tidy[term == "phw_mean_0_5" , factor := "pH Water"]
   
 # Add a column for significance stars
-  m3_tidy[p.value <= 0.001, significance := '***']
-  m3_tidy[p.value <= 0.01, significance := '**']
-  m3_tidy[p.value <= 0.05, significance := '*']
-  m3_tidy[p.value <= 0.1, significance := '.']
   m3_tidy[p.value > 0.1, significance := '']
+  m3_tidy[p.value <= 0.1, significance := '.']
+  m3_tidy[p.value <= 0.05, significance := '*']
+  m3_tidy[p.value <= 0.01, significance := '**']
+  m3_tidy[p.value <= 0.001, significance := '***']
   
-
   # Define the order of the terms
   m3_tidy[,factor := factor(factor, levels = unique(factor))]
 
@@ -650,12 +652,12 @@ require(ggplot2);require(sf);require(broom)
 
 
   # Add a column for significance stars
-  m3_tidy[p.value <= 0.001, significance := '***']
-  m3_tidy[p.value <= 0.01, significance := '**']
-  m3_tidy[p.value <= 0.05, significance := '*']
-  m3_tidy[p.value <= 0.1, significance := '.']
   m3_tidy[p.value > 0.1, significance := '']
-
+  m3_tidy[p.value <= 0.1, significance := '.']
+  m3_tidy[p.value <= 0.05, significance := '*']
+  m3_tidy[p.value <= 0.01, significance := '**']
+  m3_tidy[p.value <= 0.001, significance := '***']
+  
   # Define the order of the terms
   m3_tidy[,factor := factor(factor, levels = unique(factor))]
 

@@ -220,11 +220,13 @@ rm(list=ls())
   out.dgr <- rbindlist(out.dgr)
 
   #extract the significance of the estimate
-  out.dgr[pval <= 0.001, significance := '***']
-  out.dgr[pval <= 0.01, significance := '**']
-  out.dgr[pval <= 0.05, significance := '*']
-  out.dgr[pval <= 0.10, significance := '.']
   out.dgr[pval > 0.10, significance := '']
+  out.dgr[pval <= 0.10, significance := '.']
+  out.dgr[pval <= 0.05, significance := '*']
+  out.dgr[pval <= 0.01, significance := '**']
+  out.dgr[pval <= 0.001, significance := '***']
+  
+  
   
   ## plot the var and factor from the model
   if(FALSE){
@@ -319,11 +321,12 @@ rm(list=ls())
   m3_tidy[,factor := factor(factor, levels = unique(factor))]
   
   # add significance
-  m3_tidy[p.value <= 0.001, significance := '***']
-  m3_tidy[p.value <= 0.01, significance := '**']
-  m3_tidy[p.value <= 0.05, significance := '*']
-  m3_tidy[p.value <= 0.10, significance := '.']
   m3_tidy[p.value > 0.10, significance := '']
+  m3_tidy[p.value <= 0.10, significance := '.']
+  m3_tidy[p.value <= 0.05, significance := '*']
+  m3_tidy[p.value <= 0.01, significance := '**']
+  m3_tidy[p.value <= 0.001, significance := '***']
+    
 
   # Plot full model 
   p2 <- ggplot(m3_tidy, aes(x = factor, y = estimate)) + 
@@ -369,11 +372,11 @@ rm(list=ls())
   m4_tidy[,factor := factor(factor, levels = unique(factor))]
 
   # Add a column for significance stars
-  m4_tidy[p.value <= 0.001, significance := '***']
-  m4_tidy[p.value <= 0.01, significance := '**']
-  m4_tidy[p.value <= 0.05, significance := '*']
-  m4_tidy[p.value <= 0.10, significance := '.']
   m4_tidy[p.value > 0.10, significance := '']
+  m4_tidy[p.value <= 0.10, significance := '.']
+  m4_tidy[p.value <= 0.05, significance := '*']
+  m4_tidy[p.value <= 0.01, significance := '**']
+  m4_tidy[p.value <= 0.001, significance := '***']
   
   # make plot
   p3 <- ggplot(m4_tidy, aes(x = factor, y = estimate)) + 
