@@ -57,6 +57,29 @@ library(data.table); library(metafor); library(metagear)
   d02.treat[treatment=='NT',desc := 'No tillage']
   d02.treat[treatment=='CC',desc := 'Crop cover']
 
+  # make first plot of individual observations
+  if(FALSE){
+    
+    # remove items with missing yi or vi
+    d2 <- d02[!is.na(yi) | !is.na(vi)]
+    
+    # add id based on order yi
+    d2[, id := frankv(yi,order = -1)]
+    
+    # remove exceptional cases
+    d2 <- d2[vi<10]
+    
+    p1 <- ggplot(data = d2,aes(x= id,y=yi)) + 
+          geom_errorbar(aes(x=id,ymin = yi-vi,ymax=yi+vi),col='gray85')+
+          geom_point() + 
+          geom_line()+
+          ylim(-10,10) +
+          theme_bw() + xlab('study id') + ylab('SMD, change in NUE') + 
+          ggtitle('Observed changes in NUE (%) due to management practices')
+    
+    ggsave(plot = p1, filename = 'products/nue_smdresponse.png',width = 15, height = 10, units = 'cm')
+  }
+  
 
 # --- main factor analysis ----
   
@@ -191,6 +214,8 @@ if(FALSE){
                                 pval = round(anova(r_nue_1,r_nue_0)$pval,3)
     )
     
+    print(i)
+    
   }
   
   # merge output into a data.table for both summary stats as well the coefficients
@@ -198,6 +223,62 @@ if(FALSE){
   out1.est <- rbindlist(out1.est)
 
 
+  ## plot the var and factor from the model
+  if(FALSE){
+
+    #extract the significance of the estimate
+    out1.est[pval <= 0.10, significance := '.']
+    out1.est[pval <= 0.05, significance := '*']
+    out1.est[pval <= 0.01, significance := '**']
+    out1.est[pval <= 0.001, significance := '***']
+    out1.est[pval > 0.10, significance := '']
+    
+    # add variable name for plotting
+    out1.est[grepl('ph_',var),pname := 'soil pH']
+    out1.est[grepl('soc_',var),pname := 'soc']
+    out1.est[grepl('clay_',var),pname := 'clay']
+    out1.est[grepl('map_',var),pname := 'precipitation']
+    out1.est[grepl('mat_',var),pname := 'temperature']
+    out1.est[grepl('n_dose_',var),pname := 'N input']
+    out1.est[grepl('g_crop',var),pname := paste0('crop ',varname)]
+    out1.est[grepl('fertilizer_',var),pname := paste0('fertilizer: ',varname)]
+    out1.est[grepl('strategy',var),pname := paste0('4R: ',varname)]
+    out1.est[grepl('^cover',var) & varname=='no',pname := 'no cover crop']
+    out1.est[grepl('^cover',var) & varname=='yes',pname := 'cover crop']
+    out1.est[grepl('tillage',var),pname := paste0('tillage: ',varname)]
+    out1.est[grepl('^crop_',var) & varname=='no',pname := 'residue removed']
+    out1.est[grepl('^crop_',var) & varname=='yes',pname := 'residue retained']
+    
+    colslvl <- c("fertilizer: combined","fertilizer: enhanced","fertilizer: mineral","fertilizer: organic" ,    
+                 "residue removed","residue retained","tillage: conventional","tillage: no-till",
+                 "tillage: reduced" ,"no cover crop","cover crop",
+                 "4R: conventional","4R: placement" , "4R: rate", "4R: timing",
+                 "crop maize" , "crop rice","crop wheat","N input",
+                 "temperature","precipitation",
+                 "clay","soc"  ,"soil pH")
+    
+    out1.est[,pname := factor(pname,levels=colslvl)]
+
+        p1 <- ggplot(data = out1.est[!grepl('intr',varname)]) +
+          geom_bar(aes(x = mean, y = pname), stat = "identity", color='lightblue', fill = 'lightblue') + 
+          geom_errorbar(aes(y = pname, xmin = mean - se, xmax = mean + se), width = 0.4) + 
+          theme_bw() +
+          geom_text(aes(x = mean, y = pname, label = significance), vjust = +0.4, hjust = -0.2, size = 6, color = "red")  +                     #Add the asterisks for significance
+          xlab('Effect estimate') + ylab('Site management') +
+          theme(
+            plot.title = element_text(size = 10, hjust = 0),  # Adjust title size and align to left
+            axis.title.x = element_text(size = 12),         # Adjust x-axis title size
+            axis.title.y = element_text(size = 12),         # Adjust y-axis title size
+            axis.text.x = element_text(size = 12),           # Adjust x-axis text size
+            axis.text.y = element_text(size = 12, margin = margin(t = 20, b = 10))  # Adjust y-axis text size
+          )
+    
+    # Export and save the plot
+    ggsave(filename = 'products/plot_nue_siteman_effect.png', plot = p1, width = 8,height = 6, units = "in", dpi = 300)
+  }
+  
+  
+  
 # --- meta-regression for main factors with interactions
 
   # make a function to extract relevant model statistics
@@ -232,12 +313,21 @@ if(FALSE){
   # run without a main factor selection to estimate overall mean
   r_nue_0 <- rma.mv(yi,vi, data = d02,random= list(~ 1|studyid), method="REML",sparse = TRUE)
 
+  # complete model
+  r_nue_3 <- rma.mv(yi,vi,
+                    mods = ~clay_scaled+soc_scaled+ph_scaled+fertilizer_type+crop_residue+g_crop_type+
+                            tillage+cover_crop_and_crop_rotation+fertilizer_strategy+
+                            rfr+rfp+rft+n_dose_scaled + map_scaled + mat_scaled,
+                    data = d2,
+                    random = list(~ 1|studyid), method="REML",sparse = TRUE)
+  
   # this is a model, manually developed by adding variables/ testing impact on model performnance
   # the improvement for each improvement can be tested by the function estats. if improved, accept model parameter and add new one
   # the addition is done based on expected impact and actual improvement
   r_nue_4 <- rma.mv(yi,vi,
                   mods = ~fertilizer_type + r4pl + r4ti + r4do + crop_residue + tillage +
-                    cover_crop_and_crop_rotation + n_dose_scaled + clay_scaled + ph_scaled + map_scaled + mat_scaled + soc_scaled+
+                    cover_crop_and_crop_rotation + n_dose_scaled + clay_scaled + ph_scaled + 
+                    map_scaled + mat_scaled + soc_scaled+
                     soc_scaled : n_dose_scaled + ctm:r4pl + ctm + ctw + ctr + ctm:mat_scaled  + ndose2 -1,
                   data = d2,
                   random = list(~ 1|studyid), method="REML",sparse = TRUE)
